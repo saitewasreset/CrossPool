@@ -126,6 +126,11 @@ See [tests/README.md](tests/README.md) for suite placement, requirements, and
 commands, and [Test and Benchmark Tooling](docs/designs/tooling.md) for process,
 device allocation, endpoint, and artifact ownership.
 
+The [offline Observer prototype](local_scripts/observability/README.md) provides
+operator-run two-GPU experiments, byte-preserved archives, Fabric Invocation
+queries and separate GPU traces. Its evidence does not qualify unified clocks
+or production timeline recording.
+
 CMake uses ccache for C, C++, and CUDA when available and no compiler launcher
 is already configured. To disable it for a build, add
 `--config-settings-package xpool:cmake.define.XPOOL_ENABLE_CCACHE=OFF`
