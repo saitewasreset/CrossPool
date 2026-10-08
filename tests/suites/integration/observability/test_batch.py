@@ -55,6 +55,14 @@ def test_failed_serving_batch_preserves_attempt_and_return_bundle(
         return subprocess.CompletedProcess(command, 1)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+
+    def fake_stream(
+        command: list[str], log_path: Path, *, environment: dict[str, str] | None = None, check: bool = False
+    ) -> subprocess.CompletedProcess[str | bytes]:
+        log_path.write_text("synthetic test output")
+        return fake_run(command, env=environment, check=check)
+
+    monkeypatch.setattr(remote, "stream_command", fake_stream)
     assert remote.run(config, ("GPU-a", "GPU-b"), output) == 1
     assert (output / "archives/attempt-1/raw/failure.log").read_text() == "synthetic startup failure"
     quality = json.loads((output / "derived/attempt-1/quality.json").read_text())

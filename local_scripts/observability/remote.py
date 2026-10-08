@@ -32,6 +32,57 @@ SELECTOR = (
 )
 
 
+def stream_command(
+    command: list[str],
+    log_path: Path,
+    *,
+    environment: dict[str, str] | None = None,
+    check: bool = False,
+) -> subprocess.CompletedProcess[bytes]:
+    """Tee merged child output to a byte-preserving log and stdout.
+
+    Flush chunks without waiting for a newline. A failed output destination is
+    reported after draining the child, so a managed test runner can finish its
+    own cleanup rather than blocking on a full pipe.
+    """
+
+    failure: OSError | None = None
+    log_failed = False
+    stdout_failed = False
+    child_environment = dict(os.environ if environment is None else environment)
+    child_environment["PYTHONUNBUFFERED"] = "1"
+    with (
+        log_path.open("wb") as log,
+        subprocess.Popen(
+            command, env=child_environment, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0
+        ) as process,
+    ):
+        if process.stdout is None:
+            raise RuntimeError("merged child output pipe was not created")
+        with process.stdout:
+            while chunk := process.stdout.read(65536):
+                if not log_failed:
+                    try:
+                        log.write(chunk)
+                        log.flush()
+                    except OSError as error:
+                        log_failed = True
+                        failure = error
+                if not stdout_failed:
+                    try:
+                        sys.stdout.buffer.write(chunk)
+                        sys.stdout.buffer.flush()
+                    except OSError as error:
+                        stdout_failed = True
+                        failure = failure or error
+        returncode = process.wait()
+    if failure is not None:
+        raise OSError(f"failed to mirror command output for {command!r}; log={log_path}") from failure
+    if check and returncode != 0:
+        raise subprocess.CalledProcessError(returncode, command)
+    return subprocess.CompletedProcess(command, returncode)
+
+
 def restricted_path(path: Path) -> Path:
     """Exclude the operator's forbidden directory, including symlink aliases."""
 
@@ -59,8 +110,7 @@ def prepare(output: Path, models: Path) -> None:
     config.write_text(tomli_w.dumps(payload), encoding="utf-8")
     XpoolConfig.from_file(config, env={})
     command = ["uv", "run", "--no-sync", "xtest", "list", "--suite", "e2e", SELECTOR]
-    with (output / "collection.log").open("w") as log:
-        subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
+    stream_command(command, output / "collection.log", check=True)
     print(f"prepared config: {config}")
 
 
@@ -195,8 +245,7 @@ def run(config: Path, devices: tuple[str, ...], output: Path) -> int:
             indent=2,
         )
     )
-    with (output / "execution.log").open("w") as log:
-        completed = subprocess.run(command, env=environment, stdout=log, stderr=subprocess.STDOUT, check=False)
+    completed = stream_command(command, output / "execution.log", environment=environment)
     finished = timestamp()
     metadata_issues: list[str] = []
     representative_attempts: list[str] = []

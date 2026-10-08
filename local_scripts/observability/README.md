@@ -44,8 +44,14 @@ bash local_scripts/observability/run.sh \
 ```
 
 The batch runs only the selected E2E case with strict requirements, using the
-canonical `xtest` supervisor and managed cleanup. It retains the console output
-in `execution.log`. After execution, it archives each Attempt separately and
+canonical `xtest` supervisor and managed cleanup. It streams merged stdout and
+stderr to stdout while retaining the same bytes in `execution.log`. Preparation
+does the same for collection in `collection.log`. Each shell wrapper also saves
+its complete command output, including build output and entry-point errors, in
+a unique `.xpool-cache/observer-prepare.*.log` or `observer-run.*.log`; its path
+is printed at startup. Failed commands retain their original exit status.
+Harness-owned per-process logs retain their existing file destinations.
+After execution, it archives each Attempt separately and
 converts each valid archive. A prior failed startup is never merged with a later
 successful Attempt. Missing registration evidence produces unknown placement;
 the FfnAgent Graph snapshot can independently confirm its GPU.
