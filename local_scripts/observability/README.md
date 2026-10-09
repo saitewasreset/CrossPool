@@ -116,8 +116,10 @@ cannot be localized to one Invocation.
 
 Open each `GPU-*.trace.json` separately in [Perfetto](https://ui.perfetto.dev).
 Each file uses its own origin and converts nanosecond differences to Chrome's
-microseconds. Raw integers remain in SQLite. Activity tracks are separate to
-avoid ambiguous non-nested overlap. The export follows
+microseconds. Raw integers remain in SQLite. Tracks group events by Generation, PE, role and
+Lane, and reuse each activity row across Invocations. Only overlapping intervals
+of the same activity require additional parallel rows. Invocation, Lease and
+source references remain in event arguments instead of track names. The export follows
 [Perfetto's Chrome JSON guidance](https://perfetto.dev/docs/getting-started/other-formats).
 It contains no cross-GPU flows or calibrated unified clock. Host Graph event
 times are retained as evidence and are not projected onto the GPU domain.

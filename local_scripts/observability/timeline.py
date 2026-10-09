@@ -4,6 +4,7 @@ import json
 import sqlite3
 from collections import defaultdict
 from contextlib import closing
+from heapq import heappop, heappush
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -532,75 +533,126 @@ class ChromeEvent(TypedDict, total=False):
     args: dict[str, JsonValue]
 
 
+def pack_intervals(intervals: list[Interval]) -> list[list[Interval]]:
+    """Reuse the lowest available row; overlapping intervals occupy separate rows."""
+
+    rows: list[list[Interval]] = []
+    busy: list[tuple[int, int]] = []
+    available: list[int] = []
+    for interval in sorted(intervals, key=lambda item: (item.start_ns, item.end_ns, item.record_id)):
+        while busy and busy[0][0] <= interval.start_ns:
+            _, row = heappop(busy)
+            heappush(available, row)
+        if available:
+            row = heappop(available)
+        else:
+            row = len(rows)
+            rows.append([])
+        rows[row].append(interval)
+        heappush(busy, (interval.end_ns, row))
+    return rows
+
+
+def observation_args(item: Observation) -> dict[str, JsonValue]:
+    return {
+        "invocation": item.invocation,
+        "generation": item.generation,
+        "pe": item.pe,
+        "role": item.record["kind"],
+        "instance_index": item.record["instance_index"],
+        "layer_ordinal": item.record["layer_ordinal"],
+        "executor_lane_index": item.record["facts"]["executor_lane_index"],
+        "executor_lease_sequence": item.record["facts"]["executor_lease_sequence"],
+        "source": item.source,
+        "record_id": item.identity,
+        "record_index": item.index,
+    }
+
+
 def write_traces(timeline: Timeline, output: Path) -> None:
+    intervals_by_record: dict[str, list[Interval]] = defaultdict(list)
+    for interval in timeline.intervals:
+        intervals_by_record[interval.record_id].append(interval)
     for device in sorted({item.device_uuid for item in timeline.observations if item.device_uuid is not None}):
-        records = [item for item in timeline.observations if item.device_uuid == device]
+        records = sorted(
+            (item for item in timeline.observations if item.device_uuid == device), key=lambda item: item.identity
+        )
         times = [value for item in records for value in item.record["events_ns"].values() if value]
         if not times:
             continue
         origin = min(times)
         events: list[ChromeEvent] = []
-        # Each record/activity owns a track, so overlapping activities never masquerade as nesting.
-        track = 0
-        intervals_by_record: dict[str, list[Interval]] = defaultdict(list)
-        for interval in timeline.intervals:
-            intervals_by_record[interval.record_id].append(interval)
+        groups: dict[tuple[str, int, str, int], list[Observation]] = defaultdict(list)
         for item in records:
+            lane = item.record["facts"]["executor_lane_index"]
+            groups[(item.generation, item.pe, item.record["kind"], -1 if lane is None else lane)].append(item)
+        multiple_generations = len({item.generation for item in records}) > 1
+        track = 0
+        for (generation, pe, role, lane), members in sorted(groups.items()):
+            label = f"PE {pe} {role} lane {lane if lane >= 0 else 'unknown'}"
+            if multiple_generations:
+                label += f" generation {generation}"
             track += 1
             events.append(
-                {
-                    "name": "thread_name",
-                    "ph": "M",
-                    "pid": 1,
-                    "tid": track,
-                    "args": {"name": f"PE {item.pe} {item.record['kind']} {item.identity}"},
-                }
+                {"name": "thread_name", "ph": "M", "pid": 1, "tid": track, "args": {"name": f"{label} events"}}
             )
-            for name, value in item.record["events_ns"].items():
-                if value:
+            for item in members:
+                for name, value in sorted(item.record["events_ns"].items()):
+                    if value:
+                        events.append(
+                            {
+                                "name": name,
+                                "ph": "I",
+                                "s": "t",
+                                "cat": "fabric",
+                                "pid": 1,
+                                "tid": track,
+                                "ts": (value - origin) / 1000,
+                                "args": {
+                                    **observation_args(item),
+                                    "event_id": item.event_id(name),
+                                    "raw_ns": str(value),
+                                },
+                            }
+                        )
+            owners = {item.identity: item for item in members}
+            activities: dict[str, list[Interval]] = defaultdict(list)
+            for item in members:
+                for interval in intervals_by_record[item.identity]:
+                    activities[interval.name].append(interval)
+            for name, intervals in sorted(activities.items()):
+                rows = pack_intervals(intervals)
+                for row, packed in enumerate(rows):
+                    track += 1
+                    suffix = f" parallel {row + 1}" if len(rows) > 1 else ""
                     events.append(
                         {
-                            "name": name,
-                            "ph": "I",
-                            "s": "t",
-                            "cat": "fabric",
+                            "name": "thread_name",
+                            "ph": "M",
                             "pid": 1,
                             "tid": track,
-                            "ts": (value - origin) / 1000,
-                            "args": {
-                                "event_id": item.event_id(name),
-                                "invocation": item.invocation,
-                                "raw_ns": str(value),
-                            },
+                            "args": {"name": f"{label} {name}{suffix}"},
                         }
                     )
-            for interval in intervals_by_record[item.identity]:
-                track += 1
-                events.append(
-                    {
-                        "name": "thread_name",
-                        "ph": "M",
-                        "pid": 1,
-                        "tid": track,
-                        "args": {"name": f"PE {item.pe} {item.record['kind']} {interval.name} {item.identity}"},
-                    }
-                )
-                events.append(
-                    {
-                        "name": interval.name,
-                        "ph": "X",
-                        "cat": "fabric.local",
-                        "pid": 1,
-                        "tid": track,
-                        "ts": (interval.start_ns - origin) / 1000,
-                        "dur": (interval.end_ns - interval.start_ns) / 1000,
-                        "args": {
-                            "invocation": item.invocation,
-                            "start_event": interval.start_event,
-                            "end_event": interval.end_event,
-                        },
-                    }
-                )
+                    for interval in packed:
+                        events.append(
+                            {
+                                "name": interval.name,
+                                "ph": "X",
+                                "cat": "fabric.local",
+                                "pid": 1,
+                                "tid": track,
+                                "ts": (interval.start_ns - origin) / 1000,
+                                "dur": (interval.end_ns - interval.start_ns) / 1000,
+                                "args": {
+                                    **observation_args(owners[interval.record_id]),
+                                    "start_event": interval.start_event,
+                                    "end_event": interval.end_event,
+                                    "start_ns": str(interval.start_ns),
+                                    "end_ns": str(interval.end_ns),
+                                },
+                            }
+                        )
         payload = {
             "traceEvents": events,
             "displayTimeUnit": "ns",

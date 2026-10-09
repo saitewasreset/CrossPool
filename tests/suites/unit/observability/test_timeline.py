@@ -1,11 +1,12 @@
 import json
 import sqlite3
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
 from local_scripts.observability.archive import archive_attempt, load_manifest
 from local_scripts.observability.models import Participant, RunContext
-from local_scripts.observability.timeline import convert, query, read_timeline
+from local_scripts.observability.timeline import convert, query, read_timeline, write_traces
 from pydantic import TypeAdapter
 
 import xpool.native
@@ -172,11 +173,64 @@ def test_query_links_real_endpoints_and_keeps_clock_domains_separate(tmp_path: P
         payload = json.loads(trace.read_text())
         assert not payload["metadata"]["clock_calibrated"]
         assert all(event["ph"] in {"I", "X", "M"} for event in payload["traceEvents"])
-        assert len({event["tid"] for event in payload["traceEvents"] if event["ph"] == "X"}) == sum(
-            event["ph"] == "X" for event in payload["traceEvents"]
-        )
+        slices = [event for event in payload["traceEvents"] if event["ph"] == "X"]
+        assert len({event["tid"] for event in slices}) < len(slices)
+        assert all("invocation" in event["args"] and "source" in event["args"] for event in slices)
     with pytest.raises(ValueError, match="not found"):
         query(output / "timeline.sqlite", GENERATION, 0, 99)
+
+
+@pytest.mark.parametrize(
+    "windows,expected_tracks",
+    [
+        ([(10, 20), (20, 30)], 1),
+        ([(10, 30), (20, 40)], 2),
+        ([(10, 50), (20, 30), (30, 40), (50, 60)], 2),
+        ([(10, 50), (20, 40), (30, 35)], 3),
+        ([(10, 10), (10, 20), (20, 20)], 1),
+    ],
+)
+def test_activity_tracks_reuse_space_without_overlapping_slices(
+    tmp_path: Path, windows: list[tuple[int, int]], expected_tracks: int
+) -> None:
+    timeline = read_timeline(prepare_attempt(tmp_path))
+    compute = next(interval for interval in timeline.intervals if interval.name == "compute")
+    # Exercise layout independently of protocol qualification, with valid event references.
+    timeline.intervals = [
+        compute.model_copy(update={"start_ns": start, "end_ns": end}) for start, end in reversed(windows)
+    ]
+    output = tmp_path / "traces"
+    output.mkdir()
+    write_traces(timeline, output)
+    payload = json.loads((output / "GPU-b.trace.json").read_text())
+    slices = [event for event in payload["traceEvents"] if event["ph"] == "X"]
+    assert len(slices) == len(windows)
+    tracks = {event["tid"] for event in slices}
+    assert len(tracks) == expected_tracks
+    for track in tracks:
+        items = sorted((event for event in slices if event["tid"] == track), key=lambda event: event["ts"])
+        assert all(int(left["args"]["end_ns"]) <= int(right["args"]["start_ns"]) for left, right in pairwise(items))
+    names = [event["args"]["name"] for event in payload["traceEvents"] if event["ph"] == "M"]
+    assert all("raw/" not in name for name in names)
+
+
+def test_event_tracks_preserve_each_invocation_and_are_deterministic(tmp_path: Path) -> None:
+    timeline = read_timeline(prepare_attempt(tmp_path))
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    write_traces(timeline, first)
+    timeline.observations.reverse()
+    timeline.intervals.reverse()
+    write_traces(timeline, second)
+    assert (first / "GPU-a.trace.json").read_bytes() == (second / "GPU-a.trace.json").read_bytes()
+    payload = json.loads((first / "GPU-a.trace.json").read_text())
+    points = [event for event in payload["traceEvents"] if event["ph"] == "I"]
+    assert len({event["tid"] for event in points}) == 1
+    assert len({event["args"]["invocation"] for event in points}) == 2
+    assert len({event["args"]["event_id"] for event in points}) == len(points)
+    assert all("executor_lease_sequence" in event["args"] for event in points)
 
 
 @pytest.mark.parametrize("conflict", ["lease", "layer", "duplicate"])
