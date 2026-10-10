@@ -1,4 +1,6 @@
 #include <chrono>
+#include <exception>
+#include <future>
 #include <memory>
 #include <set>
 #include <thread>
@@ -107,6 +109,135 @@ TEST(TimelineDevice, CrossStreamReceiptAndGraphReplayUseFreshSequences) {
   C10_CUDA_CHECK(cudaStreamDestroy(second));
   owner->close();
 }
+
+cudaStreamCaptureMode capture_mode() {
+  auto mode = cudaStreamCaptureModeRelaxed;
+  C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&mode));
+  const auto current = mode;
+  C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&mode));
+  return current;
+}
+
+class TimelineCapture : public ::testing::TestWithParam<cudaStreamCaptureMode> {};
+
+TEST_P(TimelineCapture, CollectsAndDrainsDuringGlobalCaptureWithoutChangingCallerMode) {
+  C10_CUDA_CHECK(cudaSetDevice(0));
+  const auto options = xpool::devkit::timeline::Options{true, 262144, 262144, 4096};
+  auto owner = std::make_shared<xpool::devkit::timeline::Recorder>(options, 0);
+  auto stopping = std::make_shared<xpool::devkit::timeline::Recorder>(options, 0);
+  cudaStream_t capture{}, producer{};
+  C10_CUDA_CHECK(cudaStreamCreateWithFlags(&capture, cudaStreamNonBlocking));
+  C10_CUDA_CHECK(cudaStreamCreateWithFlags(&producer, cudaStreamNonBlocking));
+  // Load producer and collector kernels before capture; then keep the actual
+  // capture open until the background receipt/reclaim transaction completes.
+  produce<<<1, 32, 0, producer>>>(owner->view(), 18);
+  produce<<<1, 1, 0, producer>>>(stopping->view(), 19);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  C10_CUDA_CHECK(cudaStreamSynchronize(producer));
+  stopping->stop();
+  EXPECT_FALSE(owner->collect());
+  EXPECT_FALSE(stopping->collect());
+  auto sequences = std::set<std::uint64_t>{};
+  std::promise<void> captured;
+  auto capture_started = captured.get_future();
+  const auto caller_mode = GetParam();
+  auto collector = std::async(std::launch::async, [&] {
+    C10_CUDA_CHECK(cudaSetDevice(0));
+    auto previous = caller_mode;
+    C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&previous));
+    capture_started.wait();
+    auto stopped_records = std::size_t{0};
+    auto empty_polls = std::size_t{0};
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (auto chunk = owner->collect()) {
+        for (const auto &record : chunk->records()) {
+          EXPECT_EQ(record.kind, 18);
+          EXPECT_TRUE(sequences.insert(record.sequence).second);
+        }
+        chunk->release();
+      } else {
+        ++empty_polls;
+      }
+      EXPECT_EQ(capture_mode(), caller_mode);
+      if (auto chunk = stopping->collect()) {
+        for (const auto &record : chunk->records()) {
+          EXPECT_EQ(record.kind, 19);
+          ++stopped_records;
+        }
+        chunk->release();
+      }
+      EXPECT_EQ(capture_mode(), caller_mode);
+      const auto drained = stopping->drained();
+      EXPECT_EQ(capture_mode(), caller_mode);
+      if (sequences.size() == 32 && drained) {
+        EXPECT_EQ(stopped_records, 1);
+        EXPECT_GT(empty_polls, 0);
+        C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&previous));
+        return true;
+      }
+      std::this_thread::yield();
+    }
+    C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&previous));
+    return false;
+  });
+  C10_CUDA_CHECK(cudaStreamBeginCapture(capture, cudaStreamCaptureModeGlobal));
+  produce<<<1, 32, 0, capture>>>(owner->view(), 17);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  captured.set_value();
+  auto collected = false;
+  std::exception_ptr error;
+  try {
+    collected = collector.get();
+  } catch (...) {
+    error = std::current_exception();
+  }
+  cudaGraph_t graph{};
+  C10_CUDA_CHECK(cudaStreamEndCapture(capture, &graph));
+  if (error)
+    std::rethrow_exception(error);
+  ASSERT_TRUE(collected);
+  auto node_count = std::size_t{0};
+  C10_CUDA_CHECK(cudaGraphGetNodes(graph, nullptr, &node_count));
+  ASSERT_EQ(node_count, 1);
+  cudaGraphNode_t node{};
+  C10_CUDA_CHECK(cudaGraphGetNodes(graph, &node, &node_count));
+  cudaGraphNodeType node_type{};
+  C10_CUDA_CHECK(cudaGraphNodeGetType(node, &node_type));
+  EXPECT_EQ(node_type, cudaGraphNodeTypeKernel);
+  cudaGraphExec_t executable{};
+  C10_CUDA_CHECK(cudaGraphInstantiate(&executable, graph, 0));
+  for (auto replay = 0; replay < 3; ++replay)
+    C10_CUDA_CHECK(cudaGraphLaunch(executable, capture));
+  C10_CUDA_CHECK(cudaStreamSynchronize(capture));
+  owner->stop();
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (!owner->drained() && std::chrono::steady_clock::now() < deadline) {
+    if (auto chunk = owner->collect()) {
+      for (const auto &record : chunk->records()) {
+        EXPECT_EQ(record.kind, 17);
+        EXPECT_TRUE(sequences.insert(record.sequence).second);
+      }
+      chunk->release();
+    }
+    std::this_thread::yield();
+  }
+  ASSERT_TRUE(owner->drained());
+  EXPECT_EQ(sequences.size(), 128);
+  EXPECT_EQ(owner->counters().attempted, 128);
+  EXPECT_EQ(owner->counters().committed, 128);
+  EXPECT_EQ(owner->counters().dropped, 0);
+  stopping->close();
+  owner->close();
+  C10_CUDA_CHECK(cudaGraphExecDestroy(executable));
+  C10_CUDA_CHECK(cudaGraphDestroy(graph));
+  C10_CUDA_CHECK(cudaStreamDestroy(producer));
+  C10_CUDA_CHECK(cudaStreamDestroy(capture));
+}
+
+INSTANTIATE_TEST_SUITE_P(CallerModes, TimelineCapture,
+                         ::testing::Values(cudaStreamCaptureModeGlobal, cudaStreamCaptureModeThreadLocal,
+                                           cudaStreamCaptureModeRelaxed));
 
 TEST(TimelineDevice, SaturatedPoolDropsNewRecordsAndPreservesCommittedPrefix) {
   C10_CUDA_CHECK(cudaSetDevice(0));

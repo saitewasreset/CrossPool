@@ -81,10 +81,13 @@ public:
   void stop();
   /// Seal/acquire and asynchronously collect one ready chunk, or return no lease.
   /// Device calls never wait for an event; repeated polling drives receipt/reclaim.
+  /// Receipt queries support concurrent Global capture in another Host thread
+  /// and restore the calling thread's capture interaction mode.
   std::shared_ptr<Chunk> collect(bool seal = true);
   /// Return the latest bounded quality snapshot; device counters reflect poll time.
   Counters counters() const;
   /// Return whether no reservations/transfers/leases remain after stop.
+  /// Device receipt queries use the same capture isolation as collect().
   bool drained();
   /// Retire resources after verified drain; reject live ownership.
   void close();

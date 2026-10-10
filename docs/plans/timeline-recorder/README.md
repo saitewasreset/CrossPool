@@ -61,6 +61,15 @@ and quality; project each confirmed Host/GPU clock domain separately. Export to
 an explicit new directory outside the Session. Preserve integer timestamps and
 source endpoints. Distinguish complete, degraded and invalid outcomes.
 
+## Concurrent Graph Capture
+
+Collector receipt events belong to the independent nonblocking stream. Around
+receipt queries in Native `collect()` and `drained()`, save the calling thread's
+capture interaction mode, select `cudaStreamCaptureModeThreadLocal`, and restore
+the saved mode on every exit. Production Graph capture retains its existing
+mode. A pending event remains a nonblocking poll result; other CUDA failures
+continue to propagate, and mode-restoration failure is explicitly reported.
+
 ## Implementation And Validation
 
 1. Configuration, Session identity, expected participants and idempotent grants;

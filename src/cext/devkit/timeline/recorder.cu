@@ -26,6 +26,25 @@ std::uint64_t device_id = 0;
 int installed_device = -1;
 std::mutex installation_mutex;
 
+// Collector events belong to a separate nonblocking stream. Ignore captures
+// in other threads only while querying their receipt; preserve the caller's
+// capture policy and restrictions on events captured in this thread.
+class CaptureModeGuard {
+public:
+  CaptureModeGuard() { C10_CUDA_CHECK(cudaThreadExchangeStreamCaptureMode(&previous_)); }
+  ~CaptureModeGuard() { C10_CUDA_CHECK_WARN(cudaThreadExchangeStreamCaptureMode(&previous_)); }
+  CaptureModeGuard(const CaptureModeGuard &) = delete;
+  CaptureModeGuard &operator=(const CaptureModeGuard &) = delete;
+
+private:
+  cudaStreamCaptureMode previous_ = cudaStreamCaptureModeThreadLocal;
+};
+
+cudaError_t query_receipt(cudaEvent_t event) {
+  const auto capture_mode = CaptureModeGuard{};
+  return cudaEventQuery(event);
+}
+
 std::uint64_t now() {
   timespec value{};
   TORCH_CHECK(clock_gettime(CLOCK_MONOTONIC, &value) == 0, "xpool timeline Host clock read failed");
@@ -183,7 +202,7 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
     return {};
   const auto guard = c10::cuda::CUDAGuard(device_);
   if (phase_ != Phase::Idle) {
-    const auto result = cudaEventQuery(event_);
+    const auto result = query_receipt(event_);
     if (result == cudaErrorNotReady)
       return {};
     C10_CUDA_CHECK(result);
@@ -252,7 +271,7 @@ bool Recorder::drained() {
   if (!device_stopped_ || phase_ != Phase::Snapshot)
     return false;
   const auto guard = c10::cuda::CUDAGuard(device_);
-  const auto result = cudaEventQuery(event_);
+  const auto result = query_receipt(event_);
   if (result == cudaErrorNotReady)
     return false;
   C10_CUDA_CHECK(result);
