@@ -11,6 +11,18 @@
 
 namespace xpool::transport {
 
+/// Optional IPC-visible observation identity; production never consumes it.
+struct ObservationIdentity {
+  /// Daemon-assigned Device Producer identity of the endpoint creator.
+  std::uint64_t creator = 0;
+  /// Monotonic creation sequence within that Producer.
+  std::uint64_t endpoint = 0;
+  /// Instance-allocated operation sequence published through production fences.
+  std::uint64_t operation = 0;
+  /// Zero stops observation after identity exhaustion; production ignores it.
+  std::uint64_t valid = 1;
+};
+
 /// Request-varying FFN semantics published through one Transport mailbox.
 struct RequestMetadata {
   /// Zero-based ordinal in the model's canonical FFN layer sequence.

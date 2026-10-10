@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 
-from xpool.cli.command import CliCommand, CliCommandGroup, RunnableCliCommand
+from xpool.cli.command import CliCommand, CliCommandGroup, OfflineCliCommand, RunnableCliCommand
 from xpool.config import XpoolConfig
 from xpool.utils.discovery import discover_concrete_subclasses
 
@@ -67,6 +67,8 @@ def register_cli_commands(subparsers: argparse._SubParsersAction, commands: Sequ
                     required=True,
                 )
                 register_children(command.name)
+            elif isinstance(command, OfflineCliCommand):
+                parser.set_defaults(offline_handler=command.run)
             elif isinstance(command, RunnableCliCommand):
                 parser.set_defaults(handler=command.run)
             else:

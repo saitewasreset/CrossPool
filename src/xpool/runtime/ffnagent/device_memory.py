@@ -185,6 +185,10 @@ class DeviceMemoryEstimator:
         ensure_nonnegative_int64(element_capacity)
         return xpool.native.devkit.ffn_routing_observer.allocation_bytes(element_capacity)
 
+    def timeline_bytes(self) -> int:
+        """Return exact process-wide Timeline allocation charged at Fabric join."""
+        return xpool.native.devkit.timeline.allocation_bytes(self.config.debug.native_options().timeline, True)
+
     def fabric_observer_bytes(self) -> int:
         """Return exact optional Fabric Observer allocation bytes."""
 
@@ -319,7 +323,7 @@ class DeviceMemoryEstimator:
             default=0,
         )
         routing_record_buffer_bytes = self.routing_record_buffer_bytes(routing_elements)
-        fabric_join_bytes = self.fabric_arena_bytes() + self.fabric_observer_bytes()
+        fabric_join_bytes = self.fabric_arena_bytes() + self.fabric_observer_bytes() + self.timeline_bytes()
 
         def features(
             *,

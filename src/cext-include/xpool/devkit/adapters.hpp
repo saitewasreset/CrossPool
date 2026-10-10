@@ -63,11 +63,26 @@ struct HostAdapter {
 
 } // namespace xpool::devkit::transport_observer
 
+namespace xpool::devkit::timeline {
+/// Host lifecycle installation for independent Timeline Producers.
+struct HostAdapter {
+  /// Install one process-wide pool and initialize optional IPC identity.
+  static XPOOL_HOST_HOOK_FN(xpool::hooks::TransportEndpointOpenPostEvent, observe, context);
+  /// Observe endpoint retirement after production quiescence.
+  static XPOOL_HOST_HOOK_FN(xpool::hooks::TransportEndpointClosePreEvent, observe, context);
+  /// Install before Fabric Resident and Lane Graph execution.
+  static XPOOL_HOST_HOOK_FN(xpool::hooks::FabricJoinPostEvent, observe, context);
+  /// Record the production finalization boundary.
+  static XPOOL_HOST_HOOK_FN(xpool::hooks::FabricFinalizePreEvent, observe, context);
+};
+} // namespace xpool::devkit::timeline
+
 namespace xpool::devkit {
 
 /// Compile-time catalog of built-in Host devkit adapters.
 using HostAdapters = xpool::hooks::HostAdapterRegistry<
     xpool::devkit::fabric_observer::HostAdapter, xpool::devkit::ffn_routing_observer::HostAdapter,
-    xpool::devkit::graph_observer::HostAdapter, xpool::devkit::transport_observer::HostAdapter>;
+    xpool::devkit::graph_observer::HostAdapter, xpool::devkit::transport_observer::HostAdapter,
+    xpool::devkit::timeline::HostAdapter>;
 
 } // namespace xpool::devkit

@@ -11,6 +11,19 @@ namespace xpool::bindings {
 
 void bind_debug(py::module_ &module) {
   auto debug = module.def_submodule("debug", "Native debug options.");
+  py::class_<xpool::devkit::timeline::Options>(debug, "TimelineOptions", "Immutable bounded Timeline pool limits.")
+      .def(py::init([](bool enable, std::size_t device_buffer_bytes, std::size_t host_buffer_bytes,
+                       std::size_t chunk_bytes) {
+             return xpool::devkit::timeline::Options{enable, device_buffer_bytes, host_buffer_bytes, chunk_bytes};
+           }),
+           py::arg("enable"), py::arg("device_buffer_bytes"), py::arg("host_buffer_bytes"), py::arg("chunk_bytes"))
+      .def_readonly("enable", &xpool::devkit::timeline::Options::enable, "Enable independent collection.")
+      .def_readonly("device_buffer_bytes", &xpool::devkit::timeline::Options::device_buffer_bytes,
+                    "Device source budget in bytes, including control and IPC allowance.")
+      .def_readonly("host_buffer_bytes", &xpool::devkit::timeline::Options::host_buffer_bytes,
+                    "Host source or receipt budget in bytes, including metadata allowance.")
+      .def_readonly("chunk_bytes", &xpool::devkit::timeline::Options::chunk_bytes,
+                    "Maximum published Chunk bytes, including its header.");
   py::class_<xpool::debug::TraceObserverOptions>(debug, "TraceObserverOptions", "Immutable native trace options.")
       .def(py::init([](bool enable, std::size_t record_capacity) {
              return xpool::debug::TraceObserverOptions{enable, record_capacity};
@@ -40,8 +53,10 @@ void bind_debug(py::module_ &module) {
       .def(py::init([](xpool::debug::TraceObserverOptions transport_observer,
                        xpool::debug::TraceObserverOptions fabric_observer,
                        xpool::debug::GraphObserverOptions graph_observer,
-                       xpool::debug::FfnRoutingObserverOptions ffn_routing_observer) {
+                       xpool::debug::FfnRoutingObserverOptions ffn_routing_observer,
+                       xpool::devkit::timeline::Options timeline) {
              auto options = xpool::debug::Options{};
+             options.timeline = timeline;
              options.transport_observer = transport_observer;
              options.fabric_observer = fabric_observer;
              options.graph_observer = graph_observer;
@@ -49,7 +64,8 @@ void bind_debug(py::module_ &module) {
              return options;
            }),
            py::arg("transport_observer"), py::arg("fabric_observer"), py::arg("graph_observer"),
-           py::arg("ffn_routing_observer"))
+           py::arg("ffn_routing_observer"), py::arg("timeline") = xpool::devkit::timeline::Options{})
+      .def_readonly("timeline", &xpool::debug::Options::timeline, "Independent immutable Timeline pool limits.")
       .def_readonly("transport_observer", &xpool::debug::Options::transport_observer, "Transport trace options.")
       .def_readonly("fabric_observer", &xpool::debug::Options::fabric_observer, "Fabric trace options.")
       .def_readonly("graph_observer", &xpool::debug::Options::graph_observer, "Graph Observer options.")

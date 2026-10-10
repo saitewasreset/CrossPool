@@ -48,11 +48,25 @@ struct DeviceAdapter {
 
 } // namespace xpool::devkit::transport_observer
 
+namespace xpool::devkit::timeline {
+/// Independent immutable records from accurate existing protocol boundaries.
+struct DeviceAdapter {
+  /// Record Instance facts and allocate each IPC operation identity.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::TransportInstanceProtocolEvent, observe, context);
+  /// Record AtnAgent facts using the acquired shared identity.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::TransportAtnAgentProtocolEvent, observe, context);
+  /// Record Lane/Compute protocol brackets with actual invocation/lease identity.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::FabricFfnAgentProtocolEvent, observe, context);
+  /// Record scheduler lease boundaries without inventing participant observations.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::FabricCoordinatorProtocolEvent, observe, context);
+};
+} // namespace xpool::devkit::timeline
+
 namespace xpool::devkit {
 
 /// Compile-time catalog of built-in Device devkit adapters.
-using DeviceAdapters = xpool::hooks::DeviceAdapterRegistry<xpool::devkit::transport_observer::DeviceAdapter,
-                                                           xpool::devkit::fabric_observer::DeviceAdapter,
-                                                           xpool::devkit::ffn_routing_observer::DeviceAdapter>;
+using DeviceAdapters = xpool::hooks::DeviceAdapterRegistry<
+    xpool::devkit::transport_observer::DeviceAdapter, xpool::devkit::fabric_observer::DeviceAdapter,
+    xpool::devkit::ffn_routing_observer::DeviceAdapter, xpool::devkit::timeline::DeviceAdapter>;
 
 } // namespace xpool::devkit

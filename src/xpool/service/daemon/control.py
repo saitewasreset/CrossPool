@@ -15,10 +15,14 @@ from pathlib import Path
 from time import monotonic, sleep
 
 import psutil
+from pydantic import TypeAdapter
 
+import xpool.devkit.timeline.runtime
 import xpool.native
 from xpool import ffn
 from xpool.config import FfnSchedulingPolicy, get_global_config
+from xpool.devkit.timeline.models import Grant, GrantRequest, Producer, ProducerRequest
+from xpool.devkit.timeline.session import Session
 from xpool.fabric import (
     FabricGenerationId,
     FabricGenerationPhase,
@@ -150,6 +154,8 @@ class ControlPlane:
         self.cleanup_lock = threading.Lock()
         self.cleanup_deadline: float | None = None
         self.closed = False
+        self.timeline_session: Session | None = None
+        self.timeline_runtime: xpool.devkit.timeline.runtime.Runtime | None = None
 
     def start(self) -> None:
         """Resolve placement and start the retained attention-only controller.
@@ -176,6 +182,26 @@ class ControlPlane:
             if self.admission_closed:
                 return
             config = get_global_config()
+            if config.debug.timeline.enable:
+                options = config.debug.timeline
+                if options.outdir is None:
+                    raise ValueError("timeline output directory is missing")
+                slots = ["daemon:host"]
+                for role, devices in (("atnagent", config.atn.devices), ("ffnagent", config.ffn.devices)):
+                    for device in devices:
+                        slots.extend(f"{role}-{device}:{source}" for source in ("host", "device"))
+                for instance in config.instances:
+                    for rank in range(config.atn_world_size):
+                        slots.extend(
+                            f"instance-{instance.instance_index}-{rank}:{source}" for source in ("host", "device")
+                        )
+                payload = TypeAdapter(dict[str, int | bool | str | None]).validate_python(
+                    options.model_dump(mode="json")
+                )
+                self.timeline_session = Session(options.outdir, payload, slots)
+                self.timeline_runtime = xpool.devkit.timeline.runtime.start(
+                    "daemon", "daemon", session=self.timeline_session
+                )
             normalize_environment()
             self.device_uuids = visible_uuids()
             devices = config.devices
@@ -196,6 +222,42 @@ class ControlPlane:
                 # throwing. The scope stops creating resources at that boundary.
                 if not self.admission_closed:
                     raise
+
+    def timeline_register(self, request: ProducerRequest) -> Producer:
+        """Validate exact live process identity before retaining a Producer."""
+        owner = self.timeline_session
+        if owner is None:
+            raise XpoolDaemonError("not_ready", "timeline Session is unavailable")
+        try:
+            identity = ProcUniqId(request.pid)
+        except psutil.Error as error:
+            raise XpoolDaemonError("conflict", "timeline process creation identity is unavailable") from error
+        if identity.create_time != request.create_time:
+            raise XpoolDaemonError("conflict", "timeline process creation identity does not match")
+        try:
+            return owner.register(request)
+        except ValueError as error:
+            raise XpoolDaemonError("conflict", str(error)) from error
+
+    def timeline_grant(self, request: GrantRequest) -> Grant:
+        """Allocate bounded disk credit without accepting raw trace records."""
+        owner = self.timeline_session
+        if owner is None:
+            raise XpoolDaemonError("not_ready", "timeline Session is unavailable")
+        try:
+            return owner.grant(request)
+        except ValueError as error:
+            raise XpoolDaemonError("conflict", str(error)) from error
+
+    def close_timeline(self) -> None:
+        """Retire daemon collection after the production retirement attempt."""
+        try:
+            if self.timeline_runtime is not None:
+                self.timeline_runtime.close(production_quiesced=True, deadline=self.cleanup_deadline)
+            if self.timeline_session is not None:
+                self.timeline_session.close()
+        except Exception:
+            logger.exception("timeline Session retirement failed")
 
     def admit_agent_startup(self, request: AgentStartupAdmission) -> None:
         """Retain a configured Agent before any device initialization.
@@ -1360,6 +1422,8 @@ class ControlPlane:
             if listeners != targets.listeners:
                 return False
             startup.confirmed = True
+            if self.timeline_runtime is not None:
+                self.timeline_runtime.mark_serving()
             return True
 
     def acquire_instance_transport_arena(

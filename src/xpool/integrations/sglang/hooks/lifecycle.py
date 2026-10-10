@@ -25,6 +25,7 @@ from sglang.srt.runtime_context import (
 )
 from sglang.srt.server_args import ServerArgs
 
+import xpool.native
 from xpool import bootstrap, devkit
 from xpool.config import get_global_config
 from xpool.fabric import InstanceFfnLayerProfile, InstanceFfnProfile
@@ -252,6 +253,12 @@ def after_model_runner_alloc_memory_pool[R](
                 atn_runtime_headroom_bytes,
                 int(pre_capture_activation_reserve_mb(device_total_bytes / (1 << 20)) * (1 << 20)),
             )
+        # Timeline installs after admission and before Graph Capture; reserve its
+        # exact future allocation outside the shared KV Capacity Pool.
+        atn_runtime_headroom_bytes += xpool.native.devkit.timeline.allocation_bytes(
+            get_global_config().debug.native_options().timeline,
+            True,
+        )
         runtime.instance_rank = InstanceRankRuntime.start(
             model_id=binding.model_id,
             rank=binding.worker_rank,

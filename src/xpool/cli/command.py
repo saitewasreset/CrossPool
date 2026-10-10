@@ -70,3 +70,11 @@ class RunnableCliCommand(CliCommand, ABC):
             Depends on the concrete command; may print diagnostics or run a
             resident process.
         """
+
+
+class OfflineCliCommand(CliCommand, ABC):
+    """Artifact-only operation that neither resolves deployment config nor initializes CUDA."""
+
+    @abstractmethod
+    def run(self, args: argparse.Namespace) -> int:
+        """Operate on explicit artifact paths and return its process status."""

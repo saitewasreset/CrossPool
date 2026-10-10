@@ -6,6 +6,9 @@ import logging
 import os
 import time
 
+import torch
+
+import xpool.devkit.timeline.runtime
 import xpool.native
 from xpool.config import get_global_config
 from xpool.fabric import FabricGenerationPhase, FabricPlan, InstanceFfnProfile
@@ -250,6 +253,7 @@ class InstanceRankRuntime:
         self.failure_monitor = None
         self.arena_handle = None
         self.fabric_plan: FabricPlan | None = None
+        self.timeline: xpool.devkit.timeline.runtime.Runtime | None = None
 
     @classmethod
     def start(
@@ -286,6 +290,10 @@ class InstanceRankRuntime:
 
         runtime = cls(model_id=model_id, rank=rank)
         try:
+            if get_global_config().debug.timeline.enable:
+                runtime.timeline = xpool.devkit.timeline.runtime.start(
+                    "instance", f"instance-{runtime.instance_index}-{rank}", torch.cuda.current_device()
+                )
             runtime.start_runtime(transport, ffn_profile, kv_capacity, atn_runtime_headroom_bytes)
         except Exception:
             runtime.close()
@@ -366,6 +374,8 @@ class InstanceRankRuntime:
                     if readiness.generation is None or plan.generation != readiness.generation:
                         raise InstanceRankError("daemon returned inconsistent executable Fabric generation facts")
                     self.fabric_plan = plan
+                    if self.timeline is not None:
+                        xpool.native.devkit.timeline.set_generation(plan.generation.high, plan.generation.low, 0)
                     return plan
                 case (
                     None
@@ -555,6 +565,8 @@ class InstanceRankRuntime:
             self.deregister_runtime()
         finally:
             if self.registration is None and self.arena_handle is None:
+                if self.timeline is not None:
+                    self.timeline.close(production_quiesced=True)
                 self.client.close()
 
     def expect_transport(self, transport: InstanceRankTransportProfile) -> None:

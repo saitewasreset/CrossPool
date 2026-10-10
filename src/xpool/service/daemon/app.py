@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from xpool import bootstrap
 from xpool.config import XpoolConfig, get_global_config
+from xpool.devkit.timeline.models import Grant, GrantRequest, Producer, ProducerRequest
 from xpool.fabric import FabricGenerationId, FabricPlan
 from xpool.model import ModelId
 from xpool.native import RuntimeRole
@@ -204,10 +205,13 @@ def create_daemon() -> FastAPI:
             # Startup/bind failure can reach lifespan shutdown without the
             # server's shutdown override. Keep coordination alive until the
             # same resource owner proves retirement on that path too.
-            await asyncio.to_thread(control_plane.close)
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                await asyncio.to_thread(control_plane.close)
+            finally:
+                await asyncio.to_thread(control_plane.close_timeline)
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     app = FastAPI(title="xpool daemon", version=version("xpool"), lifespan=lifespan)
     app.state.control_plane = control_plane
@@ -226,6 +230,16 @@ def create_daemon() -> FastAPI:
             status_code=int(status),
             content={"detail": XpoolDaemonErrorDetail.from_error(exc).model_dump(mode="json")},
         )
+
+    @app.post("/timeline/register")
+    async def timeline_register(request: ProducerRequest) -> Producer:
+        """Register an expected Timeline Producer without uploading raw events."""
+        return await asyncio.to_thread(control_plane.timeline_register, request)
+
+    @app.post("/timeline/grant")
+    async def timeline_grant(request: GrantRequest) -> Grant:
+        """Deduplicate sequential requests and reserve credit before file creation."""
+        return await asyncio.to_thread(control_plane.timeline_grant, request)
 
     @app.get("/health")
     async def health() -> Response:

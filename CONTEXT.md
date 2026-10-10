@@ -293,3 +293,15 @@ _Avoid_: Estimator correction, calibration allowance
 Real-model evidence that the memory estimate admits startup without hiding
 systematic underprediction.
 _Avoid_: Memory profiling, calibration fitting
+
+**Timeline Session**:
+One daemon-created collection identity and bounded disk budget, shared by its
+expected Trace Producers.
+
+**Trace Producer**:
+One process-local Host recorder or process/device-local Device recorder with its
+own creation identity, sequence domain and bounded storage.
+
+**Timeline Chunk**:
+An immutable group of committed raw records, published independently by its
+Producer. Its lifecycle distinguishes Device receipt from file publication.

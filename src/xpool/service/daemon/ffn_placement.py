@@ -331,6 +331,7 @@ class PlacementSolver:
             maximum_weight_bytes
             + estimator.fabric_arena_bytes()
             + estimator.fabric_observer_bytes()
+            + estimator.timeline_bytes()
             + maximum_graph_capture_bytes
             + maximum_workspace_bytes
             + maximum_runtime_bytes
@@ -470,7 +471,9 @@ class PlacementSolver:
         retained_bytes: list[cp_model.IntVar] = []
         peak_bytes: list[cp_model.IntVar] = []
         headroom: list[cp_model.IntVar] = []
-        fabric_join_bytes = estimator.fabric_arena_bytes() + estimator.fabric_observer_bytes()
+        fabric_join_bytes = (
+            estimator.fabric_arena_bytes() + estimator.fabric_observer_bytes() + estimator.timeline_bytes()
+        )
         lanes = config.scheduler.ffn_concurrency
         margin = config.ffn.device_memory_extra_margin_bytes
 

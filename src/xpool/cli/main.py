@@ -44,6 +44,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 2
     try:
+        offline_handler = getattr(args, "offline_handler", None)
+        if offline_handler is not None:
+            return offline_handler(args)
         arg_values = vars(args)
         config = init_global_config(
             cli={
@@ -63,6 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         OSError,
         tomllib.TOMLDecodeError,
         ValidationError,
+        ValueError,
     ) as exc:
         print(str(exc), file=sys.stderr)
         return 2

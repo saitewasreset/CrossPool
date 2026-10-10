@@ -233,6 +233,7 @@ namespace xpool::bindings {
 
 void bind_devkit(py::module_ &module) {
   auto devkit = module.def_submodule("devkit", "Development-only native observation interfaces.");
+  bind_timeline(devkit);
   auto fabric = devkit.def_submodule("fabric_observer", "Per-PE Fabric protocol observation.");
   auto graph = devkit.def_submodule("graph_observer", "FfnAgent CUDA Graph observation.");
   auto routing = devkit.def_submodule("ffn_routing_observer", "FfnAgent routing observation.");

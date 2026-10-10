@@ -37,7 +37,7 @@ struct FabricCoordinatorProtocolEvent::Context {
   std::size_t instance_index;
   /// Protocol transition being observed.
   Kind kind;
-  /// Invocation payload for Enqueued; otherwise null.
+  /// Invocation payload for Enqueued, Scheduled and LaneReleased; otherwise null.
   const xpool::fabric::Invocation *invocation = nullptr;
   /// FIFO scheduler ticket for Enqueued.
   std::uint64_t ready_ticket = 0;

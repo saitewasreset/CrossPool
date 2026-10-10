@@ -46,6 +46,7 @@ __all__ = [
     "ModelConfig",
     "PrefillLogitObserverDebugConfig",
     "SchedulerConfig",
+    "TimelineDebugConfig",
     "TopologyError",
     "VendorConfig",
     "XpoolConfig",
@@ -277,6 +278,87 @@ TOP_LEVEL_SOURCES = (
 CONFIG_REQUIRED = (ConfigSource.CONFIG,)
 
 CONFIG_REGISTRY: tuple[ConfigSetting, ...] = (
+    ConfigSetting(
+        name="debug_timeline_enable",
+        path=("debug", "timeline", "enable"),
+        parser="bool",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=False,
+        env_var="XPOOL_DEBUG_TIMELINE_ENABLE",
+        description="Timeline enable.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_outdir",
+        path=("debug", "timeline", "outdir"),
+        parser="raw",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=None,
+        env_var="XPOOL_DEBUG_TIMELINE_OUTDIR",
+        description="Timeline outdir.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_device_buffer_bytes",
+        path=("debug", "timeline", "device_buffer_bytes"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=8388608,
+        env_var="XPOOL_DEBUG_TIMELINE_DEVICE_BUFFER_BYTES",
+        description="Timeline device buffer bytes.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_host_buffer_bytes",
+        path=("debug", "timeline", "host_buffer_bytes"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=33554432,
+        env_var="XPOOL_DEBUG_TIMELINE_HOST_BUFFER_BYTES",
+        description="Timeline host buffer bytes.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_chunk_bytes",
+        path=("debug", "timeline", "chunk_bytes"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=1048576,
+        env_var="XPOOL_DEBUG_TIMELINE_CHUNK_BYTES",
+        description="Timeline chunk bytes.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_flush_interval_ms",
+        path=("debug", "timeline", "flush_interval_ms"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=100,
+        env_var="XPOOL_DEBUG_TIMELINE_FLUSH_INTERVAL_MS",
+        description="Timeline flush interval ms.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_session_max_bytes",
+        path=("debug", "timeline", "session_max_bytes"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=1073741824,
+        env_var="XPOOL_DEBUG_TIMELINE_SESSION_MAX_BYTES",
+        description="Timeline session max bytes.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_metadata_reserve_bytes",
+        path=("debug", "timeline", "metadata_reserve_bytes"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=8388608,
+        env_var="XPOOL_DEBUG_TIMELINE_METADATA_RESERVE_BYTES",
+        description="Timeline metadata reserve bytes.",
+    ),
+    ConfigSetting(
+        name="debug_timeline_shutdown_flush_timeout_s",
+        path=("debug", "timeline", "shutdown_flush_timeout_s"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=5,
+        env_var="XPOOL_DEBUG_TIMELINE_SHUTDOWN_FLUSH_TIMEOUT_S",
+        description="Timeline shutdown flush timeout s.",
+    ),
     ConfigSetting(
         name="config_path",
         path=None,
@@ -1051,10 +1133,72 @@ class FfnRoutingObserverDebugConfig(BaseModel):
         return self
 
 
+class TimelineDebugConfig(BaseModel):
+    """Bounded independent Timeline collection installed before native capture."""
+
+    model_config = ConfigDict(extra="forbid")
+    enable: bool = Field(default=False, description="Enable independent raw Timeline collection.")
+    outdir: Path | None = Field(default=None, description="Parent directory for exclusive Timeline Sessions.")
+    device_buffer_bytes: int = Field(
+        default=8 << 20,
+        gt=0,
+        le=2**63 - 1,
+        description="Per Device Producer source budget, including control and IPC bytes.",
+    )
+    host_buffer_bytes: int = Field(
+        default=32 << 20,
+        gt=0,
+        le=2**63 - 1,
+        description="Per Producer Host storage budget, including leases and metadata.",
+    )
+    chunk_bytes: int = Field(
+        default=1 << 20, ge=4096, le=1 << 20, description="Maximum raw file bytes including its 256-byte header."
+    )
+    flush_interval_ms: int = Field(default=100, gt=0, description="Partial Chunk sealing period in milliseconds.")
+    session_max_bytes: int = Field(
+        default=1 << 30,
+        gt=0,
+        le=2**63 - 1,
+        description="Session disk quota including partial files and metadata reserve.",
+    )
+    metadata_reserve_bytes: int = Field(
+        default=8 << 20,
+        ge=65536,
+        le=2**63 - 1,
+        description="Session metadata reserve charged before issuing file grants.",
+    )
+    shutdown_flush_timeout_s: int = Field(
+        default=5, ge=0, description="Additional flush deadline in seconds, capped by production shutdown."
+    )
+
+    @model_validator(mode="after")
+    def validate_budget(self) -> TimelineDebugConfig:
+        """Reject incomplete enablement and pools without control/transfer capacity."""
+        if self.enable != (self.outdir is not None):
+            raise ValueError("debug.timeline.enable and outdir must be set or unset together")
+        if self.chunk_bytes % 256:
+            raise ValueError("timeline chunk_bytes must be a multiple of 256")
+        minimum = 131072 + 2 * self.chunk_bytes
+        if min(self.device_buffer_bytes, self.host_buffer_bytes) < minimum:
+            raise ValueError(f"timeline buffers require at least {minimum} bytes")
+        host_metadata = max(65536, min(4 << 20, self.host_buffer_bytes // 4))
+        if self.host_buffer_bytes - host_metadata < 65536 + 2 * self.chunk_bytes:
+            raise ValueError("timeline Host buffer must hold reserved metadata, control and two chunks")
+        if self.session_max_bytes <= self.metadata_reserve_bytes + self.chunk_bytes:
+            raise ValueError("timeline session budget cannot hold metadata and a data chunk")
+        if self.outdir is not None:
+            self.outdir = self.outdir.expanduser().resolve()
+        return self
+
+
 class DebugConfig(BaseModel):
     """Debug-only runtime switches resolved through the config registry."""
 
     model_config = ConfigDict(extra="forbid")
+
+    timeline: TimelineDebugConfig = Field(
+        default_factory=TimelineDebugConfig, description="Independent raw Timeline collection and resource budgets."
+    )
 
     graph_observer: GraphObserverDebugConfig = Field(
         default_factory=GraphObserverDebugConfig,
@@ -1081,6 +1225,12 @@ class DebugConfig(BaseModel):
         """Project the exact device-runtime debug options to native values."""
 
         return xpool.native.debug.Options(
+            timeline=xpool.native.debug.TimelineOptions(
+                enable=self.timeline.enable,
+                device_buffer_bytes=self.timeline.device_buffer_bytes,
+                host_buffer_bytes=self.timeline.host_buffer_bytes,
+                chunk_bytes=self.timeline.chunk_bytes,
+            ),
             transport_observer=xpool.native.debug.TraceObserverOptions(
                 enable=self.transport_observer.enable,
                 record_capacity=self.transport_observer.record_capacity,

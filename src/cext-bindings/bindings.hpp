@@ -14,6 +14,7 @@ void bind_debug(pybind11::module_ &module);
 
 /// Bind development-only observer value types and read operations.
 /// \param module Root `xpool.native` extension module.
+void bind_timeline(pybind11::module_ &module);
 void bind_devkit(pybind11::module_ &module);
 
 /// Bind Fabric metadata, trace values, and lifecycle functions.

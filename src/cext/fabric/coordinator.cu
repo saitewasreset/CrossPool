@@ -337,7 +337,10 @@ XPOOL_DEVICE_FN void progress_active_invocations(const ArenaView &arena, const c
       xpool::hooks::FabricCoordinatorProtocolEvent::hooks(
           {.arena = arena,
            .instance_index = instance_index,
-           .kind = xpool::hooks::FabricCoordinatorProtocolEvent::Kind::LaneReleased});
+           .kind = xpool::hooks::FabricCoordinatorProtocolEvent::Kind::LaneReleased,
+           .invocation = &invocation,
+           .executor_lane_index = lane,
+           .executor_lease_sequence = arena.lane_execution_publication(lane).record.executor_lease_sequence});
     }
     group.sync();
   }
@@ -354,6 +357,7 @@ XPOOL_DEVICE_FN void publish_scheduled_invocation(const ArenaView &arena, const 
         {.arena = arena,
          .instance_index = invocation.key.instance_index,
          .kind = xpool::hooks::FabricCoordinatorProtocolEvent::Kind::Scheduled,
+         .invocation = &invocation,
          .executor_lane_index = lane,
          .executor_lease_sequence = lease});
   }

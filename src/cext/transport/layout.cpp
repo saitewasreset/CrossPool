@@ -7,6 +7,7 @@
 #include <c10/util/Exception.h>
 
 #include <xpool/abi.hpp>
+#include <xpool/debug/options.hpp>
 #include <xpool/transport/arena.hpp>
 #include <xpool/utils/checked.hpp>
 #include <xpool/utils/layout.hpp>
@@ -22,14 +23,16 @@ struct TransportArenaRegions {
   xpool::utils::layout::LayoutRegion input_payload;
   xpool::utils::layout::LayoutRegion output_payload;
   xpool::utils::layout::LayoutRegion dp_rank_payload_rows;
+  xpool::utils::layout::LayoutRegion observation_identity;
   std::size_t total_bytes;
 
-  TransportArenaRegions(std::size_t payload_bytes, std::size_t dp_rank_count) {
+  TransportArenaRegions(std::size_t payload_bytes, std::size_t dp_rank_count, bool timeline) {
     using xpool::utils::layout::LayoutRegionSpec;
     const auto specs = std::to_array<LayoutRegionSpec>({
         LayoutRegionSpec::object<ArenaLayout>("transport layout"),
         LayoutRegionSpec::object<ArenaState>("transport state"),
         LayoutRegionSpec::object<Mailbox>("transport mailbox"),
+        LayoutRegionSpec::array<ObservationIdentity>("transport observation identity", timeline ? 1 : 0),
         LayoutRegionSpec::bytes("transport input payload", payload_bytes, xpool::arena::kPayloadAlignment),
         LayoutRegionSpec::bytes("transport output payload", payload_bytes, xpool::arena::kPayloadAlignment),
         LayoutRegionSpec::array<std::uint32_t>("transport DP-rank payload rows", dp_rank_count),
@@ -39,6 +42,7 @@ struct TransportArenaRegions {
     layout = plan[index++];
     state = plan[index++];
     mailbox = plan[index++];
+    observation_identity = plan[index++];
     input_payload = plan[index++];
     output_payload = plan[index++];
     dp_rank_payload_rows = plan[index++];
@@ -64,7 +68,7 @@ ArenaLayout ArenaLayout::create(std::size_t instance_index, std::size_t instance
       xpool::utils::checked::prod(hidden_size, static_cast<std::size_t>(c10::elementSize(payload_dtype)));
   const auto bytes = xpool::utils::checked::prod(payload_row_capacity, payload_row_bytes);
   const auto dp_rank_count = atn_dp_size == 1 ? std::size_t{0} : atn_dp_size;
-  const TransportArenaRegions regions{bytes, dp_rank_count};
+  const TransportArenaRegions regions{bytes, dp_rank_count, xpool::debug::options().timeline.enable};
   return ArenaLayout{
       .header = {.magic = kTransportArenaMagic,
                  .abi_version = xpool::abi::kVersion,
@@ -81,6 +85,7 @@ ArenaLayout ArenaLayout::create(std::size_t instance_index, std::size_t instance
       .hidden_size = hidden_size,
       .payload_row_bytes = payload_row_bytes,
       .payload_dtype = payload_dtype,
+      .observation_identity_offset = xpool::debug::options().timeline.enable ? regions.observation_identity.offset : 0,
       .mailbox_offset = regions.mailbox.offset,
       .input_payload_offset = regions.input_payload.offset,
       .output_payload_offset = regions.output_payload.offset,
@@ -103,9 +108,10 @@ void ArenaLayout::validate() const {
       xpool::utils::checked::prod(hidden_size, static_cast<std::size_t>(c10::elementSize(payload_dtype)));
   const auto bytes = xpool::utils::checked::prod(payload_row_capacity, expected_payload_row_bytes);
   const auto dp_rank_count = atn_dp_size == 1 ? std::size_t{0} : atn_dp_size;
-  const TransportArenaRegions regions{bytes, dp_rank_count};
+  const TransportArenaRegions regions{bytes, dp_rank_count, observation_identity_offset != 0};
   const auto expected_dp_offset = dp_rank_count == 0 ? std::size_t{0} : regions.dp_rank_payload_rows.offset;
-  TORCH_CHECK(payload_row_bytes == expected_payload_row_bytes && header.total_bytes == regions.total_bytes &&
+  TORCH_CHECK(observation_identity_offset == (observation_identity_offset ? regions.observation_identity.offset : 0) &&
+                  payload_row_bytes == expected_payload_row_bytes && header.total_bytes == regions.total_bytes &&
                   header.state_offset == regions.state.offset && mailbox_offset == regions.mailbox.offset &&
                   input_payload_offset == regions.input_payload.offset &&
                   output_payload_offset == regions.output_payload.offset &&

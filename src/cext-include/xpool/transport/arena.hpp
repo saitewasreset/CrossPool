@@ -59,6 +59,10 @@ struct ArenaView {
   XPOOL_HOST_DEVICE_FN constexpr ArenaView() = default;
   /// Construct a view over one arena base address.
   XPOOL_HOST_DEVICE_FN explicit constexpr ArenaView(std::uint8_t *base) : base_(base) {}
+  /// Address the optional identity at an owner-validated offset; zero means absent.
+  XPOOL_HOST_DEVICE_FN ObservationIdentity *observation_identity(std::size_t offset) const {
+    return offset ? reinterpret_cast<ObservationIdentity *>(base_ + offset) : nullptr;
+  }
   /// Return whether this view has no arena address.
   XPOOL_HOST_DEVICE_FN constexpr bool empty() const { return base_ == nullptr; }
 

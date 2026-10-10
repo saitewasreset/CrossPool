@@ -12,6 +12,7 @@ import httpx
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from xpool.config import get_global_config
+from xpool.devkit.timeline.models import Grant, GrantRequest, Producer, ProducerRequest
 from xpool.fabric import FabricGenerationId, FabricPlan
 from xpool.model import ModelId
 from xpool.service.errors import XpoolClientError, XpoolDaemonError
@@ -169,6 +170,16 @@ class XpoolClient:
             return model.model_validate(self.decode_json(response, context))
         except ValidationError as exc:
             raise XpoolClientError("protocol", f"xpool daemon returned invalid {context} response") from exc
+
+    def timeline_register(self, request: ProducerRequest) -> Producer:
+        """Register one creation identity before installing its native Producer."""
+        response = self.request("POST", "/timeline/register", json=request.model_dump(mode="json"))
+        return self.decode_model(response, Producer, "timeline Producer")
+
+    def timeline_grant(self, request: GrantRequest) -> Grant:
+        """Request retryable credit without sending raw trace contents."""
+        response = self.request("POST", "/timeline/grant", json=request.model_dump(mode="json"))
+        return self.decode_model(response, Grant, "timeline grant")
 
     def health(self) -> HTTPStatus:
         """Check daemon liveness.

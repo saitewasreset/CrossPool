@@ -39,6 +39,8 @@ struct ArenaLayout {
   std::size_t payload_row_bytes;
   /// Hidden-state element type for both payloads.
   c10::ScalarType payload_dtype;
+  /// Optional observation identity region; zero when disabled.
+  std::size_t observation_identity_offset;
   /// Offset of the sole Mailbox.
   std::size_t mailbox_offset;
   /// Offset of the fixed input payload byte range.

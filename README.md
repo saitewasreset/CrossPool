@@ -180,6 +180,57 @@ a checkout.
 See [Test and Benchmark Tooling](docs/designs/tooling.md) for ownership, dataset
 and metric contracts. Performance values are report-only, not readiness gates.
 
+## Independent Timeline collection
+
+Timeline is an experimental bounded collector, separate from the existing
+Observers. Enable it before starting `xpool exec` or the daemon and participants:
+
+```bash
+export XPOOL_DEBUG_TIMELINE_ENABLE=1
+export XPOOL_DEBUG_TIMELINE_OUTDIR=/path/to/raw-timeline
+```
+
+Debug settings are environment-only and resolve through `xpool.config`. Each
+run creates an exclusive Session directory. The daemon registers expected
+Producers and grants disk credit; each process collects and writes its own
+immutable binary Chunks. Publication closes a unique partial file before atomic
+rename. Quota exhaustion preserves the published prefix and marks degradation.
+Shutdown flush is bounded; incomplete transfers retain their resources.
+
+| Environment suffix after `XPOOL_DEBUG_TIMELINE_` | Default | Contract |
+| --- | --- | --- |
+| `DEVICE_BUFFER_BYTES` | 8388608 | Per Device Producer, including control/IPC allowance |
+| `HOST_BUFFER_BYTES` | 33554432 | Per Producer, including receipt leases and metadata allowance |
+| `CHUNK_BYTES` | 1048576 | Maximum file bytes including header; 256-byte multiple, 4096 to 1 MiB |
+| `FLUSH_INTERVAL_MS` | 100 | Partial Chunk sealing period |
+| `SESSION_MAX_BYTES` | 1073741824 | Disk quota including partials and metadata |
+| `METADATA_RESERVE_BYTES` | 8388608 | Reserved before issuing data grants |
+| `SHUTDOWN_FLUSH_TIMEOUT_S` | 5 | Additional wait, capped by the production retirement deadline |
+
+Read retired artifacts independently of runtime configuration or CUDA:
+
+```bash
+uv run xpool timeline verify --session /path/to/raw-timeline/SESSION_ID
+uv run xpool timeline export --session /path/to/raw-timeline/SESSION_ID \
+  --output /path/to/new-derived-directory
+```
+
+Exit codes are 0 for complete declared coverage, 1 for degraded evidence, and 2
+for invalid artifacts or I/O failure. Export retains raw nanoseconds and endpoint
+references, and emits independent Chrome JSON files usable in Perfetto for each
+Host or physical Device clock domain. Clock alignment remains unavailable;
+cross-domain durations are not calculated.
+
+Coverage comprises Host lifecycle, shared Transport endpoint/operation identity,
+local Transport boundaries, Lane Lease boundaries and Compute protocol brackets.
+The daemon's first confirmed serving-health edge separates Host events before
+and after serving confirmation. Device events retain unavailable phase alignment
+until their clock domain can be related to that Host boundary. Quality window
+timestamps are Host CLOCK_MONOTONIC observations, including for Device Producers.
+Compute brackets include dispatch overhead. Request/Step context,
+Transport-to-Fabric mapping, KV semantics and clock calibration remain future
+work. The [active plan](docs/plans/timeline-recorder/README.md) defines this delta.
+
 ## Repository Guide
 
 - [`docs/designs/README.md`](docs/designs/README.md) maps the current implemented

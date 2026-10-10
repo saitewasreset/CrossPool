@@ -50,6 +50,9 @@ Discovery issues use `roadmap`, `research`, and the applicable `area:*` label.
 Native issue types remain unset because this repository does not support
 their assignment; no substitute type label is required.
 
+The accepted [Timeline Recorder plan](timeline-recorder/README.md) defines the
+bounded collection and resource-lifecycle delta.
+
 ## Unified Timeline Observability
 
 - **Class:** Platform Capability.

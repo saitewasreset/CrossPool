@@ -10,6 +10,7 @@
 
 #include <c10/core/Device.h>
 
+#include <xpool/devkit/timeline/recorder.hpp>
 #include <xpool/macros.hpp>
 
 namespace xpool::debug {
@@ -44,6 +45,8 @@ struct FfnRoutingObserverOptions {
 
 /// Process-wide typed native debug options installed during initialization.
 struct Options {
+  /// Independent bounded Timeline pool options.
+  xpool::devkit::timeline::Options timeline;
   /// Local CUDA IPC transport trace settings.
   TraceObserverOptions transport_observer;
   /// Cross-Agent NVSHMEM Fabric trace settings.

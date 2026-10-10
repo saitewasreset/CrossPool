@@ -9,6 +9,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 
+import xpool.devkit.timeline.runtime
 import xpool.native
 from xpool import bootstrap, devkit
 from xpool.config import get_global_config
@@ -135,6 +136,7 @@ class Agent(ABC):
         self.proc_id = ProcUniqId.current()
         self.process_ref = ProcessRef(abi_version=ABI_VERSION, pid=self.proc_id.pid)
         self.client = XpoolClient()
+        self.timeline: xpool.devkit.timeline.runtime.Runtime | None = None
         try:
             self.client.check_config()
             self.client.admit_agent_startup(
@@ -156,6 +158,7 @@ class Agent(ABC):
             if endpoint is not None:
                 endpoint.require_client()
             devkit.install()
+            self.timeline = xpool.devkit.timeline.runtime.start(role.value, f"{role.value}-{device}", device)
         except Exception:
             self.client.close()
             raise
@@ -241,6 +244,8 @@ class Agent(ABC):
                     return
                 raise AgentError(f"Fabric plan acquisition failed: {error}") from error
             self.fabric_plan = plan
+            if self.timeline is not None:
+                xpool.native.devkit.timeline.set_generation(plan.generation.high, plan.generation.low, self.fabric_pe())
             self.fabric_phase = FabricGenerationPhase.PREPARING_JOIN
             logger.info("fabric plan acquired generation=%s device=%s", plan.generation.format(), self.device)
 
@@ -470,6 +475,7 @@ class Agent(ABC):
                     owners = (
                         ("heartbeat worker", self.heartbeat_worker.close),
                         ("role resources", self.close_role),
+                        ("timeline", lambda: self.timeline.close(production_quiesced=True) if self.timeline else None),
                         ("daemon client", self.client.close),
                     )
                     for name, close in owners:
@@ -490,6 +496,8 @@ class Agent(ABC):
             try:
                 self.close_role()
             finally:
+                if self.timeline is not None:
+                    self.timeline.close(production_quiesced=self.fabric_plan is None)
                 self.client.close()
             logger.info("stopped device=%s pid=%s", self.device, self.proc_id.pid)
 
