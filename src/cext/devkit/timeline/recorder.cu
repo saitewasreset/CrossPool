@@ -1,7 +1,10 @@
 #include <xpool/devkit/timeline/recorder.hpp>
 
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <exception>
 #include <iostream>
 #include <limits>
 
@@ -25,6 +28,52 @@ std::uint64_t host_id = 0;
 std::uint64_t device_id = 0;
 int installed_device = -1;
 std::mutex installation_mutex;
+
+// Entry is emitted before lock/CUDA calls, even when another thread holds the
+// Python GIL. Enabled diagnostics deliberately trade throughput for evidence.
+class DiagnosticOperation {
+public:
+  DiagnosticOperation(bool enabled, int device, const void *owner, const char *operation)
+      : enabled_(enabled), device_(device), owner_(owner), operation_(operation),
+        exceptions_(std::uncaught_exceptions()) {
+    if (enabled_) {
+      begin_ = timestamp();
+      emit("enter", 0);
+    }
+  }
+  ~DiagnosticOperation() {
+    if (enabled_)
+      emit(std::uncaught_exceptions() > exceptions_ ? "exception" : "exit", timestamp() - begin_);
+  }
+  DiagnosticOperation(const DiagnosticOperation &) = delete;
+  DiagnosticOperation &operator=(const DiagnosticOperation &) = delete;
+
+private:
+  static unsigned long long timestamp() {
+    return static_cast<unsigned long long>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count());
+  }
+  void emit(const char *edge, unsigned long long elapsed) const {
+    std::fprintf(stderr,
+                 "xpool timeline diagnostic pid=%d tid=%d device=%d recorder=%p operation=%s edge=%s "
+                 "begin_ns=%llu elapsed_ns=%llu\n",
+                 getpid(), gettid(), device_, owner_, operation_, edge, begin_, elapsed);
+    std::fflush(stderr);
+  }
+  bool enabled_;
+  int device_;
+  const void *owner_;
+  const char *operation_;
+  int exceptions_;
+  unsigned long long begin_ = 0;
+};
+
+template <typename F>
+decltype(auto) diagnose(bool enabled, int device, const void *owner, const char *operation, F &&call) {
+  const auto diagnostic = DiagnosticOperation(enabled, device, owner, operation);
+  return call();
+}
 
 // Collector events belong to a separate nonblocking stream. Ignore captures
 // in other threads only while querying their receipt; preserve the caller's
@@ -170,14 +219,18 @@ bool Recorder::record(const Record &record) {
 }
 
 void Recorder::stop() {
-  const auto lock = std::lock_guard{mutex_};
+  const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "stop");
+  const auto lock =
+      diagnose(options_.diagnostics, device_, this, "stop_lock", [&] { return std::unique_lock{mutex_}; });
   stopped_ = true;
   if (device_ < 0)
     Atomic{source_.counters().stopped}.store(1);
 }
 
 std::shared_ptr<Chunk> Recorder::collect(bool seal) {
-  const auto lock = std::lock_guard{mutex_};
+  const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "collect");
+  const auto lock =
+      diagnose(options_.diagnostics, device_, this, "collect_lock", [&] { return std::unique_lock{mutex_}; });
   TORCH_CHECK(!closed_, "xpool timeline Recorder is closed");
   TORCH_CHECK(chunk_sequence_ != std::numeric_limits<std::uint64_t>::max(), "xpool timeline Chunk sequence exhausted");
   if (device_ < 0) {
@@ -200,9 +253,15 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
   }
   if (latest_.exhausted)
     return {};
-  const auto guard = c10::cuda::CUDAGuard(device_);
+  const auto guard =
+      diagnose(options_.diagnostics, device_, this, "device_guard", [&] { return c10::cuda::CUDAGuard(device_); });
   if (phase_ != Phase::Idle) {
-    const auto result = query_receipt(event_);
+    const auto result =
+        diagnose(options_.diagnostics, device_, this, "event_query", [&] { return query_receipt(event_); });
+    if (options_.diagnostics)
+      std::fprintf(stderr, "xpool timeline receipt pid=%d tid=%d device=%d recorder=%p phase=%d result=%d\n", getpid(),
+                   gettid(), device_, static_cast<const void *>(this), static_cast<int>(phase_),
+                   static_cast<int>(result));
     if (result == cudaErrorNotReady)
       return {};
     C10_CUDA_CHECK(result);
@@ -211,9 +270,12 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
     // Receipt is complete. Schedule reclaim only now; the Host lease remains
     // held independently while its Writer publishes the file.
     held_states_[copying_host_] = copying_state_;
-    recycle<<<1, 1, 0, stream_>>>(source_, copying_source_, copying_state_);
-    C10_CUDA_KERNEL_LAUNCH_CHECK();
-    C10_CUDA_CHECK(cudaEventRecord(event_, stream_));
+    diagnose(options_.diagnostics, device_, this, "recycle_launch", [&] {
+      recycle<<<1, 1, 0, stream_>>>(source_, copying_source_, copying_state_);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();
+    });
+    diagnose(options_.diagnostics, device_, this, "event_record",
+             [&] { C10_CUDA_CHECK(cudaEventRecord(event_, stream_)); });
     phase_ = Phase::Reclaim;
     return std::make_shared<Chunk>(shared_from_this(), copying_host_, copying_state_ & kCountMask, ++chunk_sequence_,
                                    copying_state_ >> 32, collection_begin_, now());
@@ -232,10 +294,13 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
         copying_state_ = state;
         // A pending receipt is charged as held before starting the transfer.
         held_states_[copying_host_] = state;
-        C10_CUDA_CHECK(cudaMemcpyAsync(receipt_ + kControlBytes + copying_host_ * options_.chunk_bytes + kHeaderBytes,
-                                       source_.records(index), (state & kCountMask) * sizeof(Record),
-                                       cudaMemcpyDeviceToHost, stream_));
-        C10_CUDA_CHECK(cudaEventRecord(event_, stream_));
+        diagnose(options_.diagnostics, device_, this, "records_copy", [&] {
+          C10_CUDA_CHECK(cudaMemcpyAsync(receipt_ + kControlBytes + copying_host_ * options_.chunk_bytes + kHeaderBytes,
+                                         source_.records(index), (state & kCountMask) * sizeof(Record),
+                                         cudaMemcpyDeviceToHost, stream_));
+        });
+        diagnose(options_.diagnostics, device_, this, "event_record",
+                 [&] { C10_CUDA_CHECK(cudaEventRecord(event_, stream_)); });
         phase_ = Phase::Copy;
         return {};
       }
@@ -243,23 +308,33 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
   }
   phase_ = Phase::Idle;
   collection_begin_ = now();
-  snapshot<<<1, static_cast<unsigned>(kMaximumChunks), 0, stream_>>>(source_, snapshot_device_, stopped_, seal);
-  C10_CUDA_KERNEL_LAUNCH_CHECK();
-  C10_CUDA_CHECK(cudaMemcpyAsync(snapshot_host_, snapshot_device_, sizeof(Snapshot), cudaMemcpyDeviceToHost, stream_));
-  C10_CUDA_CHECK(cudaEventRecord(event_, stream_));
+  diagnose(options_.diagnostics, device_, this, "snapshot_launch", [&] {
+    snapshot<<<1, static_cast<unsigned>(kMaximumChunks), 0, stream_>>>(source_, snapshot_device_, stopped_, seal);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+  });
+  diagnose(options_.diagnostics, device_, this, "snapshot_copy", [&] {
+    C10_CUDA_CHECK(
+        cudaMemcpyAsync(snapshot_host_, snapshot_device_, sizeof(Snapshot), cudaMemcpyDeviceToHost, stream_));
+  });
+  diagnose(options_.diagnostics, device_, this, "event_record",
+           [&] { C10_CUDA_CHECK(cudaEventRecord(event_, stream_)); });
   phase_ = Phase::Snapshot;
   return {};
 }
 
 Counters Recorder::counters() const {
-  const auto lock = std::lock_guard{mutex_};
+  const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "counters");
+  const auto lock =
+      diagnose(options_.diagnostics, device_, this, "counters_lock", [&] { return std::unique_lock{mutex_}; });
   if (device_ >= 0)
     return latest_;
   return source_.counters().snapshot();
 }
 
 bool Recorder::drained() {
-  const auto lock = std::lock_guard{mutex_};
+  const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "drained");
+  const auto lock =
+      diagnose(options_.diagnostics, device_, this, "drained_lock", [&] { return std::unique_lock{mutex_}; });
   if (!stopped_ || std::any_of(held_states_.begin(), held_states_.end(), [](auto value) { return value != 0; }))
     return false;
   if (device_ < 0) {
@@ -270,8 +345,14 @@ bool Recorder::drained() {
   }
   if (!device_stopped_ || phase_ != Phase::Snapshot)
     return false;
-  const auto guard = c10::cuda::CUDAGuard(device_);
-  const auto result = query_receipt(event_);
+  const auto guard =
+      diagnose(options_.diagnostics, device_, this, "device_guard", [&] { return c10::cuda::CUDAGuard(device_); });
+  const auto result =
+      diagnose(options_.diagnostics, device_, this, "event_query", [&] { return query_receipt(event_); });
+  if (options_.diagnostics)
+    std::fprintf(stderr, "xpool timeline receipt pid=%d tid=%d device=%d recorder=%p phase=%d result=%d\n", getpid(),
+                 gettid(), device_, static_cast<const void *>(this), static_cast<int>(phase_),
+                 static_cast<int>(result));
   if (result == cudaErrorNotReady)
     return false;
   C10_CUDA_CHECK(result);
@@ -314,7 +395,9 @@ std::span<const Record> Recorder::lease_records(std::size_t slot, std::size_t co
 }
 
 void Recorder::release(std::size_t slot) {
-  const auto lock = std::lock_guard{mutex_};
+  const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "release");
+  const auto lock =
+      diagnose(options_.diagnostics, device_, this, "release_lock", [&] { return std::unique_lock{mutex_}; });
   TORCH_CHECK(slot < held_states_.size() && held_states_[slot], "xpool timeline Chunk lease is released");
   if (device_ < 0)
     TORCH_CHECK(source_.reclaim(slot, held_states_[slot]), "xpool timeline Host reclaim failed");

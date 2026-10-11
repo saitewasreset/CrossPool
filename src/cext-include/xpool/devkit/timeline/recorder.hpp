@@ -27,6 +27,8 @@ struct Options {
   std::size_t host_buffer_bytes = 32U << 20;
   /// Maximum published Chunk bytes; multiple of 256, from 4096 to 1 MiB.
   std::size_t chunk_bytes = 1U << 20;
+  /// Emit verbose Host operation entry/exit diagnostics to stderr; may perturb timing.
+  bool diagnostics = false;
   constexpr bool operator==(const Options &) const = default;
 };
 

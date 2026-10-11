@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +23,7 @@ from xpool.integrations.sglang.kv.allocator import ElasticTokenToKVPoolAllocator
 from xpool.integrations.sglang.kv.capacity import CapacityReconciler
 from xpool.integrations.sglang.kv.vmm import KvVmmBacking
 from xpool.runtime.instance import InstanceRankRuntime
+from xtest.harness.support.config import install_test_config, reset_global_config, synthetic_config
 from xtest.harness.support.sglang.fakes import ServerArgs
 from xtest.harness.support.sglang.runtime import published_sglang_config
 
@@ -136,9 +138,23 @@ def test_tp2_readiness_vote_requires_every_rank(tmp_path: Path, monkeypatch: pyt
     )
 
 
+@pytest.mark.usefixtures(reset_global_config.__name__)
+@pytest.mark.parametrize("diagnostics", [False, True])
 def test_post_capture_finalization_publishes_floor_once_then_activates_target(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    diagnostics: bool,
 ) -> None:
+    config = synthetic_config()
+    config = config.model_copy(
+        update={
+            "debug": config.debug.model_copy(
+                update={"timeline": config.debug.timeline.model_copy(update={"diagnostics": diagnostics})}
+            )
+        }
+    )
+    install_test_config(config=config)
+    caplog.set_level(logging.INFO, logger="xpool.devkit.timeline.diagnostics")
     command = xpool.native.kv.KvCapacityCommand(sequence=1, target_bundles=3)
     channel = FakeControlChannel(command)
     backing = FakeBacking()
@@ -161,6 +177,12 @@ def test_post_capture_finalization_publishes_floor_once_then_activates_target(
     assert resets == [None, None]
     assert reconciler.applied_sequence == reconciler.completed_sequence == 1
     assert result.max_total_num_tokens == 16
+    messages = [record.getMessage() for record in caplog.records]
+    if diagnostics:
+        assert any("operation=kv_capture_publish" in message and "edge=exit" in message for message in messages)
+        assert any("operation=kv_initial_apply" in message and "edge=exit" in message for message in messages)
+    else:
+        assert messages == []
 
 
 def test_reclaim_drains_until_the_exact_suffix_becomes_safe(

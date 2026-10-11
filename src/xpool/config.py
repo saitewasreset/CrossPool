@@ -288,6 +288,15 @@ CONFIG_REGISTRY: tuple[ConfigSetting, ...] = (
         description="Timeline enable.",
     ),
     ConfigSetting(
+        name="debug_timeline_diagnostics",
+        path=("debug", "timeline", "diagnostics"),
+        parser="bool",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=False,
+        env_var="XPOOL_DEBUG_TIMELINE_DIAGNOSTICS",
+        description="Verbose Timeline and post-capture hang diagnostics.",
+    ),
+    ConfigSetting(
         name="debug_timeline_outdir",
         path=("debug", "timeline", "outdir"),
         parser="raw",
@@ -1138,6 +1147,7 @@ class TimelineDebugConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     enable: bool = Field(default=False, description="Enable independent raw Timeline collection.")
+    diagnostics: bool = Field(default=False, description="Emit verbose operation entry/exit hang diagnostics.")
     outdir: Path | None = Field(default=None, description="Parent directory for exclusive Timeline Sessions.")
     device_buffer_bytes: int = Field(
         default=8 << 20,
@@ -1230,6 +1240,7 @@ class DebugConfig(BaseModel):
                 device_buffer_bytes=self.timeline.device_buffer_bytes,
                 host_buffer_bytes=self.timeline.host_buffer_bytes,
                 chunk_bytes=self.timeline.chunk_bytes,
+                diagnostics=self.timeline.diagnostics,
             ),
             transport_observer=xpool.native.debug.TraceObserverOptions(
                 enable=self.transport_observer.enable,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -17,7 +19,8 @@ from sglang.srt.model_executor.model_runner_components.kv_pool_runtime import Po
 from sglang.srt.runtime_context import get_parallel
 
 import xpool.native
-from xpool.config import LatencySloConfig
+from xpool.config import LatencySloConfig, get_global_config
+from xpool.devkit.timeline.diagnostics import operation
 from xpool.fabric import FabricGenerationPhase
 from xpool.integrations.sglang.kv.allocator import (
     ElasticPagedTokenToKVPoolAllocator,
@@ -26,6 +29,8 @@ from xpool.integrations.sglang.kv.allocator import (
 from xpool.integrations.sglang.kv.radix import evict_suffix_reclaim_nodes, select_suffix_reclaim_nodes
 from xpool.integrations.sglang.kv.vmm import KvVmmBacking
 from xpool.runtime.instance import INSTANCE_STARTUP_BARRIER_TIMEOUT_S, InstanceRankError, InstanceRankRuntime
+
+logger = logging.getLogger(__name__)
 
 KV_CAPACITY_COMMAND_POLL_INTERVAL_S = 0.01
 KV_CAPACITY_GENERATION_CHECK_INTERVAL_S = 0.5
@@ -301,28 +306,49 @@ class CapacityReconciler:
     ) -> PostCaptureKVResize:
         """Release to the floor, negotiate startup capacity, and expose the service ceiling."""
 
-        torch.cuda.synchronize(model_runner.device)
+        with operation("kv_capture_synchronize"):
+            torch.cuda.synchronize(model_runner.device)
         self.active_bundles = self.backing.capacity_profile.floor_bundles
-        self.allocator.set_token_capacity(self.backing.usable_tokens(self.active_bundles))
-        self.backing.resize(self.active_bundles)
-        self.request_pool.reset_aux_cache_allocator()
-        self.channel.publish_initial_backing(self.backing.backed_bundles)
-        self.channel.publish_capture_complete()
+        with operation("kv_allocator_capacity"):
+            self.allocator.set_token_capacity(self.backing.usable_tokens(self.active_bundles))
+        with operation("kv_floor_resize"):
+            self.backing.resize(self.active_bundles)
+        with operation("kv_aux_allocator_reset"):
+            self.request_pool.reset_aux_cache_allocator()
+        with operation("kv_initial_backing_publish"):
+            self.channel.publish_initial_backing(self.backing.backed_bundles)
+        with operation("kv_capture_publish"):
+            self.channel.publish_capture_complete()
 
         deadline = time.monotonic() + INSTANCE_STARTUP_BARRIER_TIMEOUT_S
         next_generation_check = time.monotonic()
         ceiling = self.channel.service_ceiling()
+        next_diagnostic = 0.0
         while time.monotonic() < deadline:
-            commands = self.channel.read_commands()
-            self.accept_command(commands[self.command_index])
-            ceiling = ceiling or self.channel.service_ceiling()
+            with operation("kv_initial_commands"):
+                commands = self.channel.read_commands()
+                self.accept_command(commands[self.command_index])
+                ceiling = ceiling or self.channel.service_ceiling()
             if self.command is not None:
-                self.begin_scheduling(None)
+                with operation("kv_initial_apply"):
+                    self.begin_scheduling(None)
             if self.applied_sequence != 0 and ceiling is not None:
                 break
             now = time.monotonic()
+            if get_global_config().debug.timeline.diagnostics and now >= next_diagnostic:
+                logger.info(
+                    "kv initial capacity waiting pid=%s command_index=%s applied_sequence=%s "
+                    "ceiling=%s remaining_s=%.3f",
+                    os.getpid(),
+                    self.command_index,
+                    self.applied_sequence,
+                    ceiling,
+                    max(0.0, deadline - now),
+                )
+                next_diagnostic = now + 5
             if now >= next_generation_check:
-                self.check_generation()
+                with operation("kv_initial_generation_check"):
+                    self.check_generation()
                 next_generation_check = now + KV_CAPACITY_GENERATION_CHECK_INTERVAL_S
             time.sleep(KV_CAPACITY_COMMAND_POLL_INTERVAL_S)
         else:

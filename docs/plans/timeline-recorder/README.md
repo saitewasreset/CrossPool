@@ -70,6 +70,29 @@ the saved mode on every exit. Production Graph capture retains its existing
 mode. A pending event remains a nonblocking poll result; other CUDA failures
 continue to propagate, and mode-restoration failure is explicitly reported.
 
+## Opt-in Hang Diagnostics
+
+Add `debug.timeline.diagnostics` (default false), resolved from
+`XPOOL_DEBUG_TIMELINE_DIAGNOSTICS`. Forward the value into Native pool options.
+When enabled, emit stderr entry/exit pairs for Recorder lock acquisition and
+CUDA receipt operations, with PID, native thread ID, Recorder identity, device,
+operation, start timestamp and elapsed Host monotonic nanoseconds. Exits during
+exception unwinding are marked explicitly. Native logging does not acquire the
+Python GIL or Recorder mutex. Pending event results are identified separately.
+
+Use the same switch for Python pipeline operations, ATN health/memory
+publication and Instance post-capture capacity negotiation. Log startup phase
+edges and periodic capacity-wait state. Preserve existing synchronization,
+exceptions, admission, deadlines and retirement. Diagnostics can perturb timing
+and increase disk use; they are disabled for performance qualification. The
+local qualification script accepts `--diagnostics` and forwards the switch
+explicitly despite sanitizing inherited environment variables.
+
+Validate default silence, enabled identity/paired edges, pending poll reporting,
+exception edges and configuration propagation. Run focused Python/native tests,
+format/type/lint checks, and attempt Host ASAN/UBSAN. Remote multi-device reruns
+provide the actual stall evidence; local tests do not establish its cause.
+
 ## Implementation And Validation
 
 1. Configuration, Session identity, expected participants and idempotent grants;

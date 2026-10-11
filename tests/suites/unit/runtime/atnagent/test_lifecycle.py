@@ -330,6 +330,7 @@ def test_atnagent_joins_fabric_before_activating_transport(monkeypatch: pytest.M
 
 
 def test_atnagent_publishes_device_memory_once_after_capture(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_test_config(config=synthetic_config())
     publications: list[tuple[int, int]] = []
     capture_complete = False
 

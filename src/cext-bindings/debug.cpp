@@ -13,17 +13,21 @@ void bind_debug(py::module_ &module) {
   auto debug = module.def_submodule("debug", "Native debug options.");
   py::class_<xpool::devkit::timeline::Options>(debug, "TimelineOptions", "Immutable bounded Timeline pool limits.")
       .def(py::init([](bool enable, std::size_t device_buffer_bytes, std::size_t host_buffer_bytes,
-                       std::size_t chunk_bytes) {
-             return xpool::devkit::timeline::Options{enable, device_buffer_bytes, host_buffer_bytes, chunk_bytes};
+                       std::size_t chunk_bytes, bool diagnostics) {
+             return xpool::devkit::timeline::Options{enable, device_buffer_bytes, host_buffer_bytes, chunk_bytes,
+                                                     diagnostics};
            }),
-           py::arg("enable"), py::arg("device_buffer_bytes"), py::arg("host_buffer_bytes"), py::arg("chunk_bytes"))
+           py::arg("enable"), py::arg("device_buffer_bytes"), py::arg("host_buffer_bytes"), py::arg("chunk_bytes"),
+           py::arg("diagnostics") = false)
       .def_readonly("enable", &xpool::devkit::timeline::Options::enable, "Enable independent collection.")
       .def_readonly("device_buffer_bytes", &xpool::devkit::timeline::Options::device_buffer_bytes,
                     "Device source budget in bytes, including control and IPC allowance.")
       .def_readonly("host_buffer_bytes", &xpool::devkit::timeline::Options::host_buffer_bytes,
                     "Host source or receipt budget in bytes, including metadata allowance.")
       .def_readonly("chunk_bytes", &xpool::devkit::timeline::Options::chunk_bytes,
-                    "Maximum published Chunk bytes, including its header.");
+                    "Maximum published Chunk bytes, including its header.")
+      .def_readonly("diagnostics", &xpool::devkit::timeline::Options::diagnostics,
+                    "Emit verbose operation diagnostics to stderr; may perturb timing.");
   py::class_<xpool::debug::TraceObserverOptions>(debug, "TraceObserverOptions", "Immutable native trace options.")
       .def(py::init([](bool enable, std::size_t record_capacity) {
              return xpool::debug::TraceObserverOptions{enable, record_capacity};

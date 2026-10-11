@@ -332,3 +332,17 @@ def test_init_global_config_warns_once_for_unknown_xpool_env(
 
     messages = [record.message for record in caplog.records if "XPOOL_UNKNOWN" in record.message]
     assert messages == ["ignoring unknown xpool environment variables: XPOOL_UNKNOWN"]
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_timeline_diagnostics_env_reaches_native_options(enabled: bool) -> None:
+    payload = {
+        "scheduler": {"slo": {"ttft_ms": 1000, "tbt_ms": 50}},
+        "atn": {"devices": [0]},
+        "ffn": {"devices": [1]},
+        "models": [{"id": str(TEST_MODEL_ID), "path": "/models/m"}],
+    }
+    config = XpoolConfig.from_mapping(payload, env={"XPOOL_DEBUG_TIMELINE_DIAGNOSTICS": "1" if enabled else "0"})
+    assert config.debug.timeline.diagnostics is enabled
+    assert config.debug.native_options().timeline.diagnostics is enabled
+    assert XpoolConfig.from_mapping(payload, env={}).debug.timeline.diagnostics is False

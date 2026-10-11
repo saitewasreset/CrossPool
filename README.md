@@ -199,6 +199,7 @@ Shutdown flush is bounded; incomplete transfers retain their resources.
 
 | Environment suffix after `XPOOL_DEBUG_TIMELINE_` | Default | Contract |
 | --- | --- | --- |
+| `DIAGNOSTICS` | false | Verbose stderr operation edges for hang diagnosis; affects timing and disk use |
 | `DEVICE_BUFFER_BYTES` | 8388608 | Per Device Producer, including control/IPC allowance |
 | `HOST_BUFFER_BYTES` | 33554432 | Per Producer, including receipt leases and metadata allowance |
 | `CHUNK_BYTES` | 1048576 | Maximum file bytes including header; 256-byte multiple, 4096 to 1 MiB |
@@ -206,6 +207,14 @@ Shutdown flush is bounded; incomplete transfers retain their resources.
 | `SESSION_MAX_BYTES` | 1073741824 | Disk quota including partials and metadata |
 | `METADATA_RESERVE_BYTES` | 8388608 | Reserved before issuing data grants |
 | `SHUTDOWN_FLUSH_TIMEOUT_S` | 5 | Additional wait, capped by the production retirement deadline |
+
+For a diagnostic rerun, set `XPOOL_DEBUG_TIMELINE_DIAGNOSTICS=1`. Python logs
+identify the Producer and native logs identify the Recorder, PID, native thread,
+device, operation and Host monotonic start/elapsed time. Native entry precedes
+Recorder lock acquisition and CUDA calls; an unmatched entry narrows a blocked
+interval. Repeated `receipt` lines include the state-machine phase and CUDA
+query result, distinguishing pending events from blocked Host calls. Entry/exit
+logs are verbose and may change timing; disable them for overhead measurements.
 
 Read retired artifacts independently of runtime configuration or CUDA:
 

@@ -13,6 +13,7 @@ import torch
 
 import xpool.native
 from xpool.config import get_global_config
+from xpool.devkit.timeline.diagnostics import operation
 from xpool.devkit.timeline.models import Grant, GrantRequest, ProcessRole, Producer, ProducerRequest, Reason
 from xpool.devkit.timeline.session import Session
 from xpool.devkit.timeline.writer import Writer
@@ -55,7 +56,8 @@ class Pipeline:
         next_seal = 0.0
         try:
             while not self.stop_collecting.is_set():
-                recorder = self.get_recorder()
+                with operation("recorder_lookup", producer=self.producer.producer_id):
+                    recorder = self.get_recorder()
                 self.recorder = recorder
                 if recorder is None:
                     if self.finish.is_set():
@@ -63,12 +65,14 @@ class Pipeline:
                     self.stop_collecting.wait(self.interval)
                     continue
                 if self.finish.is_set() or self.writer.failed or Reason.DISK_LIMIT in self.writer.quality.reasons:
-                    recorder.stop()
+                    with operation("recorder_stop", producer=self.producer.producer_id):
+                        recorder.stop()
                 if not self.queue.full():
                     seal = self.finish.is_set() or time.monotonic() >= next_seal
                     if seal:
                         next_seal = time.monotonic() + self.interval
-                    chunk = recorder.collect(seal)
+                    with operation("collect", producer=self.producer.producer_id):
+                        chunk = recorder.collect(seal)
                     if chunk is not None:
                         self.queue.put_nowait(chunk)
                         del chunk
@@ -106,11 +110,13 @@ class Pipeline:
                         if self.writer.replenish():
                             break
                         self.stop_collecting.wait(self.interval)
-                    self.writer.publish(chunk)
+                    with operation("publish", producer=self.producer.producer_id):
+                        self.writer.publish(chunk)
                     del chunk  # Last lease view retired; receipt storage is reusable.
                 recorder = self.recorder
                 if recorder is not None and time.monotonic() - last_checkpoint >= 1:
-                    self.writer.checkpoint(recorder.counters(), False)
+                    with operation("checkpoint", producer=self.producer.producer_id):
+                        self.writer.checkpoint(recorder.counters(), False)
                     last_checkpoint = time.monotonic()
             recorder = self.recorder
             if recorder is not None:
@@ -133,7 +139,8 @@ class Pipeline:
         self.finish.set()
         recorder = self.recorder
         if recorder is not None:
-            recorder.stop()
+            with operation("recorder_stop", producer=self.producer.producer_id):
+                recorder.stop()
         self.collector.join(max(0.0, deadline - time.monotonic()))
         self.writer_thread.join(max(0.0, deadline - time.monotonic()))
         if self.collector.is_alive() or self.writer_thread.is_alive():
@@ -142,7 +149,8 @@ class Pipeline:
             logger.warning("timeline flush timeout producer=%s", self.producer.producer_id)
             return
         if recorder is not None and production_quiesced and recorder.drained():
-            recorder.close()
+            with operation("recorder_close", producer=self.producer.producer_id):
+                recorder.close()
 
 
 class Runtime:

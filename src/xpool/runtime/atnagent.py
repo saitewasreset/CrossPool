@@ -11,6 +11,7 @@ import torch
 
 import xpool.native
 from xpool.config import get_global_config
+from xpool.devkit.timeline.diagnostics import operation
 from xpool.fabric import FabricGenerationPhase, FabricParticipantPhase
 from xpool.model import ModelId
 from xpool.native import ABI_VERSION, RuntimeRole
@@ -416,8 +417,10 @@ class AtnAgent(Agent):
             or not self.control_channel.captures_complete()
         ):
             return
-        free_bytes, total_bytes = torch.cuda.mem_get_info(self.local_rank)
-        self.control_channel.publish_device_memory(total_bytes, free_bytes)
+        with operation("kv_memory_query", device=self.device):
+            free_bytes, total_bytes = torch.cuda.mem_get_info(self.local_rank)
+        with operation("kv_memory_publish", device=self.device):
+            self.control_channel.publish_device_memory(total_bytes, free_bytes)
         self.capacity_memory_published = True
         logger.info(
             "kv memory observed device=%s total_bytes=%s free_bytes=%s",
@@ -429,7 +432,8 @@ class AtnAgent(Agent):
     def poll_fabric_health(self) -> None:
         """Check both Fabric and the process-wide Transport Resident."""
 
-        super().poll_fabric_health()
+        with operation("atn_fabric_health", device=self.device):
+            super().poll_fabric_health()
         report = self.participant_report
         if (
             report is not None
@@ -438,11 +442,13 @@ class AtnAgent(Agent):
             and self.fabric_phase in {FabricGenerationPhase.ACTIVATING, FabricGenerationPhase.EXECUTABLE}
         ):
             try:
-                self.transport.check_health()
+                with operation("atn_transport_health", device=self.device):
+                    self.transport.check_health()
             except AgentError as error:
                 self.report_local_control_failure(str(error))
                 raise
-        self.publish_kv_memory_if_ready()
+        with operation("kv_capture_check", device=self.device):
+            self.publish_kv_memory_if_ready()
 
     def close_role(self) -> None:
         """Release every local transport arena."""
