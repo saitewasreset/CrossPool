@@ -11,6 +11,8 @@
 #include <cuda_runtime_api.h>
 #include <nvshmem.h>
 
+#include <xpool/debug/options.hpp>
+#include <xpool/devkit/timeline/diagnostics.hpp>
 #include <xpool/fabric/arena.hpp>
 #include <xpool/fabric/layout.hpp>
 
@@ -45,7 +47,9 @@ Arena Arena::create(const ArenaLayout &layout, std::span<const InstanceEntry> in
 ArenaState Arena::state() const {
   TORCH_CHECK(base_ != nullptr, "xpool cannot read state from an empty Fabric arena");
   auto state = ArenaState{};
-  C10_CUDA_CHECK(cudaMemcpy(&state, base_ + layout_.header.state_offset, sizeof(state), cudaMemcpyDeviceToHost));
+  xpool::devkit::timeline::diagnose(xpool::debug::options_h.timeline.diagnostics, -1, this, "fabric_state_copy", [&] {
+    C10_CUDA_CHECK(cudaMemcpy(&state, base_ + layout_.header.state_offset, sizeof(state), cudaMemcpyDeviceToHost));
+  });
   return state;
 }
 

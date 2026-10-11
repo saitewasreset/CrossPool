@@ -36,6 +36,18 @@ struct Options {
 /// \throws c10::Error for invalid geometry.
 std::size_t allocation_bytes(const Options &options, bool device);
 
+/// Diagnostic-only mapped Host words; relaxed observations are not completion receipts.
+/// Reset by Host only after the preceding recycle event completes. The Device
+/// writes entry before reclaim, its boolean result, and exit after reclaim.
+struct RecycleProgress {
+  std::uint32_t entered = 0;
+  std::uint32_t exited = 0;
+  /// Zero before result publication, one for reclaimed, two for rejected.
+  std::uint32_t result = 0;
+  constexpr bool operator==(const RecycleProgress &) const = default;
+};
+static_assert(sizeof(Snapshot) + sizeof(RecycleProgress) <= kControlBytes);
+
 class Recorder;
 
 /// Move-independent lease holding its Producer's Host storage alive.
@@ -108,6 +120,15 @@ public:
 
 private:
   enum class Phase { Idle, Snapshot, Copy, Reclaim };
+  void report_receipt(cudaError_t result);
+  /// Diagnostic words reside inside the existing pinned receipt control budget.
+  RecycleProgress *recycle_host_ = nullptr;
+  RecycleProgress *recycle_device_ = nullptr;
+  RecycleProgress reported_progress_{};
+  Phase reported_phase_ = Phase::Idle;
+  cudaError_t reported_result_ = cudaErrorUnknown;
+  std::uint64_t receipt_report_ns_ = 0;
+  std::uint64_t receipt_polls_ = 0;
   Options options_;
   int device_;
   std::size_t source_bytes_;

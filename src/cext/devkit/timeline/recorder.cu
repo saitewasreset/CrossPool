@@ -1,10 +1,8 @@
 #include <xpool/devkit/timeline/recorder.hpp>
 
 #include <algorithm>
-#include <chrono>
 #include <cstdio>
 #include <cstring>
-#include <exception>
 #include <iostream>
 #include <limits>
 
@@ -16,6 +14,7 @@
 
 #include <xpool/debug/options.cuh>
 #include <xpool/devkit/timeline/device.cuh>
+#include <xpool/devkit/timeline/diagnostics.hpp>
 #include <xpool/utils/checked.hpp>
 
 namespace xpool::devkit::timeline {
@@ -28,52 +27,6 @@ std::uint64_t host_id = 0;
 std::uint64_t device_id = 0;
 int installed_device = -1;
 std::mutex installation_mutex;
-
-// Entry is emitted before lock/CUDA calls, even when another thread holds the
-// Python GIL. Enabled diagnostics deliberately trade throughput for evidence.
-class DiagnosticOperation {
-public:
-  DiagnosticOperation(bool enabled, int device, const void *owner, const char *operation)
-      : enabled_(enabled), device_(device), owner_(owner), operation_(operation),
-        exceptions_(std::uncaught_exceptions()) {
-    if (enabled_) {
-      begin_ = timestamp();
-      emit("enter", 0);
-    }
-  }
-  ~DiagnosticOperation() {
-    if (enabled_)
-      emit(std::uncaught_exceptions() > exceptions_ ? "exception" : "exit", timestamp() - begin_);
-  }
-  DiagnosticOperation(const DiagnosticOperation &) = delete;
-  DiagnosticOperation &operator=(const DiagnosticOperation &) = delete;
-
-private:
-  static unsigned long long timestamp() {
-    return static_cast<unsigned long long>(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
-            .count());
-  }
-  void emit(const char *edge, unsigned long long elapsed) const {
-    std::fprintf(stderr,
-                 "xpool timeline diagnostic pid=%d tid=%d device=%d recorder=%p operation=%s edge=%s "
-                 "begin_ns=%llu elapsed_ns=%llu\n",
-                 getpid(), gettid(), device_, owner_, operation_, edge, begin_, elapsed);
-    std::fflush(stderr);
-  }
-  bool enabled_;
-  int device_;
-  const void *owner_;
-  const char *operation_;
-  int exceptions_;
-  unsigned long long begin_ = 0;
-};
-
-template <typename F>
-decltype(auto) diagnose(bool enabled, int device, const void *owner, const char *operation, F &&call) {
-  const auto diagnostic = DiagnosticOperation(enabled, device, owner, operation);
-  return call();
-}
 
 // Collector events belong to a separate nonblocking stream. Ignore captures
 // in other threads only while querying their receipt; preserve the caller's
@@ -127,9 +80,20 @@ XPOOL_KERNEL_FN void snapshot(PoolView source, Snapshot *output, bool stop, bool
   }
 }
 
-XPOOL_KERNEL_FN void recycle(PoolView source, std::size_t index, std::uint64_t state) {
-  if (threadIdx.x == 0)
-    source.reclaim(index, state);
+XPOOL_KERNEL_FN void recycle(PoolView source, std::size_t index, std::uint64_t state, RecycleProgress *progress) {
+  if (threadIdx.x == 0) {
+    // Relaxed system stores expose progress without adding release fences to the
+    // reclaim path. They are diagnostic observations, not a completion protocol.
+    if (progress)
+      cuda::atomic_ref<std::uint32_t, cuda::thread_scope_system>{progress->entered}.store(1,
+                                                                                          cuda::memory_order_relaxed);
+    const auto reclaimed = source.reclaim(index, state);
+    if (progress) {
+      cuda::atomic_ref<std::uint32_t, cuda::thread_scope_system>{progress->result}.store(reclaimed ? 1 : 2,
+                                                                                         cuda::memory_order_relaxed);
+      cuda::atomic_ref<std::uint32_t, cuda::thread_scope_system>{progress->exited}.store(1, cuda::memory_order_relaxed);
+    }
+  }
 }
 
 } // namespace
@@ -175,10 +139,15 @@ Recorder::Recorder(const Options &options, int device)
     for (auto index = std::size_t{0}; index < source_.chunks; ++index)
       C10_CUDA_CHECK(cudaMemcpy(source_.commits(index), commits.data(), commits.size() * sizeof(std::uint64_t),
                                 cudaMemcpyHostToDevice));
-    C10_CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void **>(&receipt_), host_bytes_, cudaHostAllocDefault));
+    C10_CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void **>(&receipt_), host_bytes_,
+                                 options_.diagnostics ? cudaHostAllocMapped : cudaHostAllocDefault));
     std::memset(receipt_, 0, kControlBytes);
     snapshot_host_ = std::construct_at(reinterpret_cast<Snapshot *>(receipt_));
     snapshot_device_ = &source_.metadata().snapshot;
+    if (options_.diagnostics) {
+      recycle_host_ = std::construct_at(reinterpret_cast<RecycleProgress *>(receipt_ + sizeof(Snapshot)));
+      C10_CUDA_CHECK(cudaHostGetDevicePointer(reinterpret_cast<void **>(&recycle_device_), recycle_host_, 0));
+    }
     C10_CUDA_CHECK(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
     C10_CUDA_CHECK(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
     held_states_.resize((host_bytes_ - kControlBytes) / options.chunk_bytes);
@@ -258,10 +227,7 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
   if (phase_ != Phase::Idle) {
     const auto result =
         diagnose(options_.diagnostics, device_, this, "event_query", [&] { return query_receipt(event_); });
-    if (options_.diagnostics)
-      std::fprintf(stderr, "xpool timeline receipt pid=%d tid=%d device=%d recorder=%p phase=%d result=%d\n", getpid(),
-                   gettid(), device_, static_cast<const void *>(this), static_cast<int>(phase_),
-                   static_cast<int>(result));
+    report_receipt(result);
     if (result == cudaErrorNotReady)
       return {};
     C10_CUDA_CHECK(result);
@@ -270,8 +236,13 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
     // Receipt is complete. Schedule reclaim only now; the Host lease remains
     // held independently while its Writer publishes the file.
     held_states_[copying_host_] = copying_state_;
+    if (recycle_host_) {
+      std::atomic_ref{recycle_host_->entered}.store(0, std::memory_order_relaxed);
+      std::atomic_ref{recycle_host_->exited}.store(0, std::memory_order_relaxed);
+      std::atomic_ref{recycle_host_->result}.store(0, std::memory_order_relaxed);
+    }
     diagnose(options_.diagnostics, device_, this, "recycle_launch", [&] {
-      recycle<<<1, 1, 0, stream_>>>(source_, copying_source_, copying_state_);
+      recycle<<<1, 1, 0, stream_>>>(source_, copying_source_, copying_state_, recycle_device_);
       C10_CUDA_KERNEL_LAUNCH_CHECK();
     });
     diagnose(options_.diagnostics, device_, this, "event_record",
@@ -322,6 +293,50 @@ std::shared_ptr<Chunk> Recorder::collect(bool seal) {
   return {};
 }
 
+void Recorder::report_receipt(cudaError_t result) {
+  if (!options_.diagnostics)
+    return;
+  ++receipt_polls_;
+  const auto observed = now();
+  auto progress = RecycleProgress{};
+  if (phase_ == Phase::Reclaim && recycle_host_) {
+    progress.entered = std::atomic_ref{recycle_host_->entered}.load(std::memory_order_relaxed);
+    progress.exited = std::atomic_ref{recycle_host_->exited}.load(std::memory_order_relaxed);
+    progress.result = std::atomic_ref{recycle_host_->result}.load(std::memory_order_relaxed);
+  }
+  if (phase_ == reported_phase_ && result == reported_result_ && progress == reported_progress_ &&
+      observed - receipt_report_ns_ < 5000000000ULL)
+    return;
+  const char *phase = "idle";
+  switch (phase_) {
+  case Phase::Idle:
+    break;
+  case Phase::Snapshot:
+    phase = "snapshot";
+    break;
+  case Phase::Copy:
+    phase = "copy";
+    break;
+  case Phase::Reclaim:
+    phase = "reclaim";
+    break;
+  }
+  std::fprintf(stderr,
+               "xpool timeline receipt pid=%d tid=%d device=%d recorder=%p phase=%s result=%d "
+               "source_slot=%zu epoch=%llu chunk_sequence=%llu recycle_entered=%u recycle_exited=%u "
+               "recycle_result=%u polls=%llu observed_ns=%llu\n",
+               getpid(), gettid(), device_, static_cast<const void *>(this), phase, static_cast<int>(result),
+               copying_source_, static_cast<unsigned long long>(copying_state_ >> 32),
+               static_cast<unsigned long long>(chunk_sequence_), progress.entered, progress.exited, progress.result,
+               static_cast<unsigned long long>(receipt_polls_), static_cast<unsigned long long>(observed));
+  std::fflush(stderr);
+  reported_phase_ = phase_;
+  reported_result_ = result;
+  reported_progress_ = progress;
+  receipt_report_ns_ = observed;
+  receipt_polls_ = 0;
+}
+
 Counters Recorder::counters() const {
   const auto diagnostic = DiagnosticOperation(options_.diagnostics, device_, this, "counters");
   const auto lock =
@@ -349,10 +364,7 @@ bool Recorder::drained() {
       diagnose(options_.diagnostics, device_, this, "device_guard", [&] { return c10::cuda::CUDAGuard(device_); });
   const auto result =
       diagnose(options_.diagnostics, device_, this, "event_query", [&] { return query_receipt(event_); });
-  if (options_.diagnostics)
-    std::fprintf(stderr, "xpool timeline receipt pid=%d tid=%d device=%d recorder=%p phase=%d result=%d\n", getpid(),
-                 gettid(), device_, static_cast<const void *>(this), static_cast<int>(phase_),
-                 static_cast<int>(result));
+  report_receipt(result);
   if (result == cudaErrorNotReady)
     return false;
   C10_CUDA_CHECK(result);
@@ -381,6 +393,8 @@ void Recorder::close() {
     source_.base = nullptr;
     C10_CUDA_CHECK(cudaFreeHost(receipt_));
     receipt_ = nullptr;
+    recycle_host_ = nullptr;
+    recycle_device_ = nullptr;
   }
   closed_ = true;
 }

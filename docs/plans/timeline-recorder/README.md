@@ -74,18 +74,36 @@ continue to propagate, and mode-restoration failure is explicitly reported.
 
 Add `debug.timeline.diagnostics` (default false), resolved from
 `XPOOL_DEBUG_TIMELINE_DIAGNOSTICS`. Forward the value into Native pool options.
-When enabled, emit stderr entry/exit pairs for Recorder lock acquisition and
-CUDA receipt operations, with PID, native thread ID, Recorder identity, device,
-operation, start timestamp and elapsed Host monotonic nanoseconds. Exits during
-exception unwinding are marked explicitly. Native logging does not acquire the
-Python GIL or Recorder mutex. Pending event results are identified separately.
+When enabled, sample successful operation pairs at five-second intervals per
+thread and operation. Track every active Native operation independently of the
+Python GIL; a process-local monitor reports operations still active after one
+second, repeating at five-second intervals. Exceptions and slow completed calls
+remain visible. Include PID, native thread ID, owner identity, device, operation,
+start timestamp and elapsed Host monotonic nanoseconds. The monitor is retained until OS process retirement because timed-out native
+callers may outlive interpreter/static teardown. Diagnostic monitoring
+never acquires a Recorder or Fabric mutex and submits no CUDA work.
+
+Place typed `RecycleProgress` entry/exit/result words in mapped pinned receipt
+control storage after the Snapshot. The control allowance includes these words;
+chunk offsets and allocation byte totals remain unchanged. Only enabled Device
+Recorders map and initialize the words. Host resets them after previous receipt
+completion; the recycle kernel makes relaxed system-scope atomic progress stores
+before and after reclaim. Progress reports are diagnostic observations, not a
+replacement for event completion or a coherent multiword snapshot. Report
+changes immediately and stable pending state every five seconds, with source
+slot, epoch and Chunk sequence. Retain mapped storage with timed-out owners and
+free it only at the existing verified-close seam.
+
+Instrument `fabric.failure()` before mutex acquisition, Device guard creation,
+Arena state read and the synchronous device-to-Host copy itself. Keep reads,
+copy memory kind, exception propagation and synchronization unchanged.
 
 Use the same switch for Python pipeline operations, ATN health/memory
-publication and Instance post-capture capacity negotiation. Log startup phase
-edges and periodic capacity-wait state. Preserve existing synchronization,
-exceptions, admission, deadlines and retirement. Diagnostics can perturb timing
-and increase disk use; they are disabled for performance qualification. The
-local qualification script accepts `--diagnostics` and forwards the switch
+publication and Instance post-capture capacity negotiation. Sample normal
+operation pairs, retaining startup phase changes and periodic capacity-wait
+state. Preserve existing synchronization, admission, deadlines and retirement.
+Diagnostics can perturb timing; disable them for performance qualification.
+The local qualification script accepts `--diagnostics` and forwards the switch
 explicitly despite sanitizing inherited environment variables.
 
 Validate default silence, enabled identity/paired edges, pending poll reporting,

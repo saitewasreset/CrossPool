@@ -16,6 +16,8 @@
 #include <nvshmemx.h>
 
 #include <xpool/abort.hpp>
+#include <xpool/debug/options.hpp>
+#include <xpool/devkit/timeline/diagnostics.hpp>
 #include <xpool/fabric/coordinator.hpp>
 #include <xpool/fabric/ffnagent.hpp>
 #include <xpool/fabric/hooks.hpp>
@@ -273,11 +275,16 @@ bool Runtime::drain_pending() {
 }
 
 std::optional<FailurePayload> Runtime::failure() const {
-  const auto lock = std::lock_guard<std::mutex>{mutex_};
+  const auto enabled = xpool::debug::options_h.timeline.diagnostics;
+  const auto diagnostic = xpool::devkit::timeline::DiagnosticOperation(enabled, -1, this, "fabric_failure");
+  const auto lock = xpool::devkit::timeline::diagnose(enabled, -1, this, "fabric_failure_lock",
+                                                      [&] { return std::unique_lock{mutex_}; });
   TORCH_CHECK(phase_ == Phase::Joined || phase_ == Phase::Draining || phase_ == Phase::Drained,
               "xpool Fabric failure is unavailable outside a joined generation");
-  const auto device_guard = c10::cuda::CUDAGuard{*device_};
-  const auto state = arena_.state();
+  const auto device_guard = xpool::devkit::timeline::diagnose(enabled, *device_, this, "fabric_failure_device_guard",
+                                                              [&] { return c10::cuda::CUDAGuard{*device_}; });
+  const auto state = xpool::devkit::timeline::diagnose(enabled, *device_, this, "fabric_failure_state",
+                                                       [&] { return arena_.state(); });
   if (state.failure.publication == 0) {
     return std::nullopt;
   }

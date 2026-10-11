@@ -199,7 +199,7 @@ Shutdown flush is bounded; incomplete transfers retain their resources.
 
 | Environment suffix after `XPOOL_DEBUG_TIMELINE_` | Default | Contract |
 | --- | --- | --- |
-| `DIAGNOSTICS` | false | Verbose stderr operation edges for hang diagnosis; affects timing and disk use |
+| `DIAGNOSTICS` | false | Sampled stderr operation edges and stalled-call reports; affects timing |
 | `DEVICE_BUFFER_BYTES` | 8388608 | Per Device Producer, including control/IPC allowance |
 | `HOST_BUFFER_BYTES` | 33554432 | Per Producer, including receipt leases and metadata allowance |
 | `CHUNK_BYTES` | 1048576 | Maximum file bytes including header; 256-byte multiple, 4096 to 1 MiB |
@@ -208,13 +208,23 @@ Shutdown flush is bounded; incomplete transfers retain their resources.
 | `METADATA_RESERVE_BYTES` | 8388608 | Reserved before issuing data grants |
 | `SHUTDOWN_FLUSH_TIMEOUT_S` | 5 | Additional wait, capped by the production retirement deadline |
 
-For a diagnostic rerun, set `XPOOL_DEBUG_TIMELINE_DIAGNOSTICS=1`. Python logs
-identify the Producer and native logs identify the Recorder, PID, native thread,
-device, operation and Host monotonic start/elapsed time. Native entry precedes
-Recorder lock acquisition and CUDA calls; an unmatched entry narrows a blocked
-interval. Repeated `receipt` lines include the state-machine phase and CUDA
-query result, distinguishing pending events from blocked Host calls. Entry/exit
-logs are verbose and may change timing; disable them for overhead measurements.
+For a diagnostic rerun, set `XPOOL_DEBUG_TIMELINE_DIAGNOSTICS=1`. Successful
+operation pairs are sampled every five seconds. An independent Native monitor
+reports calls still active after one second (`edge=stalled`), then every five
+seconds, including calls begun between samples. Logs retain PID, native thread,
+owner identity, device, operation and Host monotonic start/elapsed time.
+
+Receipt summaries report state changes and otherwise every five seconds, with
+poll count, source slot, epoch and Chunk sequence. In `phase=reclaim`, mapped
+Host progress words report `recycle_entered`, `recycle_exited` and
+`recycle_result` (0 unknown, 1 reclaimed, 2 rejected). Entry=0/exit=0 means entry
+has not been observed; entry=1/exit=0 means entry but no exit has been observed;
+exit=1 means the kernel published its exit marker. Relaxed progress words are
+best-effort observations, not a coherent snapshot or a completion receipt;
+the CUDA event continues to govern recycling. `fabric_failure_lock`,
+`fabric_failure_device_guard`, `fabric_failure_state` and `fabric_state_copy`
+identify narrower Fabric health intervals. Diagnostics may change timing;
+disable them for overhead measurements.
 
 Read retired artifacts independently of runtime configuration or CUDA:
 

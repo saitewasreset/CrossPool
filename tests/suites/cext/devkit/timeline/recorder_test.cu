@@ -3,6 +3,7 @@
 #include <future>
 #include <memory>
 #include <set>
+#include <string>
 #include <thread>
 
 #include <c10/cuda/CUDAException.h>
@@ -269,3 +270,30 @@ TEST(TimelineDevice, SaturatedPoolDropsNewRecordsAndPreservesCommittedPrefix) {
   owner->close();
 }
 } // namespace
+
+TEST(TimelineDevice, DiagnosticRecyclePublishesHostVisibleEntryAndExit) {
+  C10_CUDA_CHECK(cudaSetDevice(0));
+  const auto options = xpool::devkit::timeline::Options{true, 262144, 262144, 4096, true};
+  auto owner = std::make_shared<xpool::devkit::timeline::Recorder>(options, 0);
+  produce<<<1, 1, 0, nullptr>>>(owner->view(), 23);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  C10_CUDA_CHECK(cudaDeviceSynchronize());
+  owner->stop();
+  testing::internal::CaptureStderr();
+  auto received = std::size_t{0};
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (!owner->drained() && std::chrono::steady_clock::now() < deadline) {
+    if (auto chunk = owner->collect()) {
+      received += chunk->records().size();
+      chunk->release();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  const auto output = testing::internal::GetCapturedStderr();
+  ASSERT_TRUE(owner->drained());
+  EXPECT_EQ(received, 1);
+  EXPECT_NE(output.find("phase=reclaim result=0"), std::string::npos);
+  EXPECT_NE(output.find("recycle_entered=1 recycle_exited=1 recycle_result=1"), std::string::npos);
+  EXPECT_EQ(owner->host_bytes(), xpool::devkit::timeline::allocation_bytes(options, false));
+  owner->close();
+}
