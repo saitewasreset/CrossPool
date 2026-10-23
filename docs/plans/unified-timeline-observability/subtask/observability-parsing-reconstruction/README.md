@@ -20,6 +20,9 @@ Routing attachment validation, quality reporting, and offline legacy projections
 - Reconstruct Graph templates/executions, Transport operations, Fabric role
   observations, participants, Lane/Lease identities, and explicitly evidenced edges.
   Preserve Graph one-to-many and TP/DP many-to-one relationships.
+- Keep Graph owners scoped to their actual executing process. Retain explicit
+  Fabric-entry associations independently of publication, execution return and
+  result availability, including one Invocation with multiple Graph owners.
 - Validate published Routing tensors and preserve independent event/attachment
   availability. Keep calibration samples as raw evidence for clock calibration.
 - Provide earliest-N legacy projections and separate quality/provenance without
@@ -52,6 +55,9 @@ Each layer receives focused unit tests and managed Ruff/ty checks. File and
 cross-module tests belong to Integration; run the relevant tests through xtest.
 Use the repository's pinned Ruff and ty rather than adding another checker.
 Existing fixed fixtures remain independent oracles; do not regenerate their expected outputs.
+Verify fixture byte lengths and checksums. Exercise non-returning and failed
+execution, multiple Graph owners, and unsupported versions through public
+parsing/reconstruction boundaries and published-file round trips.
 Update the owning Devkit design and user documentation after validation.
 
 ## Out of Scope

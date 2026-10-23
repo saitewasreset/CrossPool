@@ -6,7 +6,7 @@ import pytest
 
 from xpool.observability.errors import ObservationError
 from xpool.observability.reconstruction import EntityIdentity, phase_interval, reconstruct
-from xpool.observability.wire import EventKind, GraphError, PresenceBit
+from xpool.observability.wire import EventKind, EventRole, GraphError, PresenceBit, ResultCode
 
 from .fixtures import events_for, fixture, scenario
 
@@ -59,6 +59,51 @@ def test_causal_fixtures(case: dict) -> None:
             assert actual_operations == sorted(operations)
             actual.append(graph)
         assert len(actual) == len({edge.origin for edge in result.edges if edge.relation == "graph_to_operation"})
+    if "fabric_entry_proven" in expected:
+        assert (
+            any(edge.relation == "operation_to_invocation" for edge in result.edges) == expected["fabric_entry_proven"]
+        )
+    if expected.get("submission_publication") == "unknown":
+        assert not any(event.record.kind == EventKind.SUBMISSION_PUBLISHED for event in result.events.values())
+    if expected.get("execution_completion") == "unknown":
+        execution = next(
+            interval
+            for interval in result.intervals
+            if interval.name == "execution" and interval.observation.role == EventRole.ATNAGENT
+        )
+        assert execution.begin is not None and execution.end is None
+        assert execution.status == "partial" and execution.duration_ns is None
+    if "instance_result" in expected and expected["instance_result"] is None:
+        operation = result.of_kind("operation")[0]
+        instance = next(o for o in operation.observations.values() if o.identity.role == EventRole.INSTANCE)
+        assert "result_code" not in instance.facts
+    if expected.get("atnagent_result") == "timeout":
+        operation = result.of_kind("operation")[0]
+        atnagent = next(o for o in operation.observations.values() if o.identity.role == EventRole.ATNAGENT)
+        assert atnagent.facts["result_code"] == ResultCode.TIMEOUT
+        assert EventKind.EXECUTION_COMPLETED in atnagent.events
+        assert EventKind.RESULT_PUBLISHED in atnagent.events
+    if expected.get("ffn_compute_completion") == "unknown":
+        compute = next(interval for interval in result.intervals if interval.name == "compute")
+        assert compute.begin is not None and compute.end is None
+        assert compute.status == "partial" and compute.duration_ns is None
+    if "graph_owners" in expected:
+        activities = [edge for edge in result.edges if edge.relation == "invocation_to_graph_activity"]
+        owners = set()
+        for edge in activities:
+            assert isinstance(edge.destination, EntityIdentity)
+            owners.add(edge.destination.components[0])
+        assert sorted(owners) == expected["graph_owners"]
+        assert len({edge.destination for edge in activities}) == len(expected["graph_owners"])
+    if expected.get("device_completion_from_host_return") is False:
+        for interval in result.intervals:
+            if interval.name == "device_activity":
+                assert all(
+                    next(p for p in event.metadata.producers if p.id == event.source.identity.producer).source
+                    == "device"
+                    for event in (interval.begin, interval.end)
+                    if event is not None
+                )
     assert set(expected.get("quality", [])) <= result.quality.codes
     for edge in result.edges:
         assert edge.sources

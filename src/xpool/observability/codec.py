@@ -146,7 +146,8 @@ kind_names: dict[int, str] = {
     EventKind.CALIBRATION_SAMPLE_FAILED: "CalibrationSampleFailed",
 }
 
-CHUNK_MAGIC = b"XPOOLC01"
+CHUNK_MAGIC = b"XPOOLC02"
+
 
 @dataclass(frozen=True)
 class ChunkHeader:
@@ -207,7 +208,7 @@ def validate_event(event: Event) -> None:
 
     for field in {field for fields in presence_groups.values() for field in fields} - present:
         require(getattr(r, field) == 0, f"absent field {field} is nonzero")
-    
+
     for field in (
         "generation",
         "endpoint_owner",
@@ -224,16 +225,16 @@ def validate_event(event: Event) -> None:
     ):
         if field in present:
             require(getattr(r, field) > 0, f"{field} must be positive")
-    
+
     require(r.role in EventRole, "unknown role")
     require(not r.has(PresenceBit.PE) or r.pe >= 0, "negative PE")
 
     if r.has(PresenceBit.REQUEST_FACTS):
         require(r.forward_mode in ForwardMode and r.dp_row_layout in DpRowLayout, "invalid request enum")
-    
+
     if r.has(PresenceBit.INVOCATION_FACTS):
         require(r.output_requirement in OutputRequirement, "invalid output requirement")
-    
+
     require(not r.has(PresenceBit.DELIVERY) or r.delivery in Delivery, "invalid delivery")
     require(not r.has(PresenceBit.RESULT_CODE) or r.result_code in ResultCode, "invalid result")
 
@@ -244,7 +245,7 @@ def validate_event(event: Event) -> None:
 
     if producer is None:
         return
-    
+
     require(event.source.process_creation_id == producer.process_creation_id, "event process provenance mismatch")
 
     require(r.clock_domain_id == producer.clock_domain_id, "Producer/domain mismatch")
@@ -292,7 +293,7 @@ def validate_event(event: Event) -> None:
                     any(site.producer == producer.id and roles[site.site] == r.role for site in endpoint.sites),
                     "event is not from this Endpoint site",
                 )
-    
+
     if r.has(PresenceBit.GRAPH_TEMPLATE):
         require(
             any(
@@ -301,7 +302,7 @@ def validate_event(event: Event) -> None:
             ),
             "unregistered Graph template",
         )
-    
+
     require(not r.has(PresenceBit.GRAPH_EXECUTION) or r.graph_owner in producers, "unregistered Graph owner")
 
     require(not r.has(PresenceBit.ATTACHMENT) or r.attachment_owner in producers, "unregistered attachment owner")
@@ -375,7 +376,7 @@ def validate_event(event: Event) -> None:
             PresenceBit.PE,
         )
         require(r.role == EventRole.FFNAGENT and r.attachment_owner == producer.id, "Routing publisher mismatch")
-    
+
     require(all(r.has(bit) for bit in required), "missing required presence group")
 
     if r.has(PresenceBit.PE) and r.has(PresenceBit.GENERATION):
@@ -490,16 +491,16 @@ def parse_chunk(data: bytes, metadata_bytes: bytes | None, *, path: Path = Path(
 
     if magic != CHUNK_MAGIC:
         raise fail(ErrorCode.BAD_MAGIC, "invalid chunk magic")
-    
-    if version != 1:
+
+    if version != 2:
         raise fail(ErrorCode.UNSUPPORTED_VERSION, f"unsupported chunk version {version}", 8)
-    
+
     if (header_bytes, event_bytes, flags) != (128, 256, 0):
         raise fail(ErrorCode.INVALID_LAYOUT, "invalid header/event layout or flags", 10)
-    
+
     if zlib.crc32(data[:92] + bytes(4) + data[96:128]) != header_crc:
         raise fail(ErrorCode.HEADER_CHECKSUM, "header CRC mismatch", 92)
-    
+
     if (
         not 1 <= count <= 4095
         or payload_bytes != count * 256
@@ -510,26 +511,26 @@ def parse_chunk(data: bytes, metadata_bytes: bytes | None, *, path: Path = Path(
         or begin > end
     ):
         raise fail(ErrorCode.INVALID_LENGTH, "invalid declared count, size, sequence or window")
-    
+
     if metadata_bytes is None:
         raise fail(ErrorCode.METADATA_UNAVAILABLE, "required metadata revision unavailable")
-    
+
     if hashlib.sha256(metadata_bytes).digest()[:16] != metadata_hash:
         raise fail(ErrorCode.METADATA_CHECKSUM, "metadata SHA-256 mismatch", 112)
-    
+
     metadata = Metadata.parse_artifact(metadata_bytes, path, ErrorCode.METADATA_UNAVAILABLE)
     run_id = str(UUID(bytes=run_bytes))
 
     if (metadata.run_id, metadata.producer_id, metadata.revision) != (run_id, producer, revision):
         raise fail(ErrorCode.METADATA_UNAVAILABLE, "metadata publication identity mismatch")
-    
+
     if zlib.crc32(data[128:]) != payload_crc:
         raise fail(ErrorCode.PAYLOAD_CHECKSUM, "payload CRC mismatch", 88)
-    
+
     events: list[Event] = []
 
     previous = 0
-    
+
     for offset in range(128, len(data), 256):
         try:
             record = EventRecord.model_validate(
@@ -537,7 +538,7 @@ def parse_chunk(data: bytes, metadata_bytes: bytes | None, *, path: Path = Path(
             )
         except ValidationError as exc:
             raise fail(ErrorCode.INVALID_EVENT, "invalid record widths or identities", offset) from exc
-        
+
         source = Source(
             EventIdentity(run_id, producer, record.event_sequence),
             path,
@@ -550,18 +551,18 @@ def parse_chunk(data: bytes, metadata_bytes: bytes | None, *, path: Path = Path(
         )
 
         event = Event(record, source, metadata)
-        
+
         validate_event(event)
-        
+
         if record.event_sequence <= previous:
             raise event_error(ErrorCode.INVALID_EVENT, "non-increasing sequence within chunk", event)
-        
+
         previous = record.event_sequence
         events.append(event)
-    
+
     if events[0].record.event_sequence != first or events[-1].record.event_sequence != last:
         raise fail(ErrorCode.INVALID_EVENT, "header sequence bounds disagree with payload")
-    
+
     return Chunk(ChunkHeader(run_id, producer, sequence, revision, begin, end), metadata, tuple(events))
 
 
@@ -569,14 +570,14 @@ def encode_chunk(header: ChunkHeader, records: tuple[EventRecord, ...], metadata
     """Encode canonical fields independently of Native layouts and validate the result.
 
     Raises:
-        ObservationError: If the requested chunk violates the v1 contract.
+        ObservationError: If the requested chunk violates the v2 contract.
     """
     try:
         payload = b"".join(event_struct.pack(*(getattr(record, name) for name in event_fields)) for record in records)
         packed = bytearray(
             header_struct.pack(
                 CHUNK_MAGIC,
-                1,
+                2,
                 128,
                 256,
                 0,
@@ -597,7 +598,7 @@ def encode_chunk(header: ChunkHeader, records: tuple[EventRecord, ...], metadata
         )
     except (struct.error, ValueError) as exc:
         raise ObservationError(ErrorCode.INVALID_EVENT, "chunk fields exceed wire representation") from exc
-    
+
     struct.pack_into("<I", packed, 92, zlib.crc32(packed))
     data = bytes(packed) + payload
     parse_chunk(data, metadata_bytes)

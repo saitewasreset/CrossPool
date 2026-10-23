@@ -85,7 +85,7 @@ and the separate semantic qualification assertions.
 
 ## Offline observation artifacts
 
-`xpool.observability` reads the version-one raw observation contract through an
+`xpool.observability` reads the version-two raw observation contract through an
 explicit inventory of published chunk, metadata and quality files. The caller
 supplies typed Routing attachment indices, their Run/owner completion scopes,
 and an attachment root. It does not discover directories, parse temporary tails,
@@ -98,6 +98,9 @@ and identities, payload CRC, and event semantics in that order. JSON inputs
 reject duplicate keys, coercion and non-finite constants. Errors retain a stable
 `ErrorCode`, path, offset and available Producer/event identity; underlying I/O
 and parsing failures remain attached as causes.
+Chunks use `XPOOLC02` and version 2; metadata, quality checkpoints and Routing
+tensors carry the same contract version. Other versions fail explicitly.
+Generation topology preserves optional FFN TP width when supplied in metadata.
 
 Reconstruction keys every identity by Run and registered Producer or protocol
 owner. Local trace IDs are only legacy projection facts. Each entity retains
@@ -109,6 +112,12 @@ activity remain distinct. Graph-to-operation one-to-many and TP/DP
 operation-to-Invocation many-to-one edges require retained identity evidence.
 Protocol edges retain their actual publication/observation endpoints; aggregate
 conditions never create per-participant events. No edge depends on time proximity.
+Graph owners are Host Producers in the actual executing process; Device Graph
+events resolve their owner within that process creation. One Invocation can
+reference distinct Graph activities in several owning processes. A retained
+Transport/Fabric entry association proves Submission preparation independently
+of publication or execution return. Failed or non-returning execution retains
+that entry evidence while missing completion boundaries remain unknown.
 
 Intervals require observed endpoints in one raw domain. Missing boundaries,
 Graph errors and reversed time remain explicit partial/unavailable/conflict

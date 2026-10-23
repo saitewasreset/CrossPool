@@ -1,4 +1,4 @@
-"""Strict version-one artifact declarations and provenance values."""
+"""Strict version-two artifact declarations and provenance values."""
 
 import json
 import math
@@ -60,14 +60,14 @@ class StrictModel(BaseModel):
 
             if isinstance(value, dict) and type(value.get("contract_version")) is not int:
                 raise ValueError("contract_version must be an integer")
-            
+
             if (
                 isinstance(value, dict)
                 and type(value.get("contract_version")) is int
-                and value["contract_version"] != 1
+                and value["contract_version"] != 2
             ):
                 raise ObservationError(ErrorCode.UNSUPPORTED_VERSION, "unsupported artifact version", path=path)
-            
+
             return cls.model_validate(value)
         except ObservationError:
             raise
@@ -134,6 +134,7 @@ class ClockDomain(StrictModel):
 class ModelTopology(StrictModel):
     atn_tp_size: PositiveU64
     atn_dp_size: PositiveU64
+    ffn_tp_size: PositiveU64 | None = None
 
 
 class GenerationModel(StrictModel):
@@ -197,7 +198,7 @@ class Capabilities(StrictModel):
 class Metadata(StrictModel):
     """One immutable, hash-addressed Producer metadata revision."""
 
-    contract_version: Literal[1]
+    contract_version: Literal[2]
     run_id: str
     producer_id: PositiveU64
     revision: PositiveU64
@@ -218,11 +219,11 @@ class Metadata(StrictModel):
         """Establish reference uniqueness and ownership before admitting events."""
         if str(UUID(self.run_id)) != self.run_id:
             raise ValueError("Run UUID must be canonical")
-        
+
         producers = {item.id: item for item in self.producers}
         domains = {item.id: item for item in self.clock_domains}
         generations = {item.id: item for item in self.generations}
-        
+
         for entries, keys in (
             (self.producers, [item.id for item in self.producers]),
             (self.clock_domains, [item.id for item in self.clock_domains]),
@@ -233,19 +234,19 @@ class Metadata(StrictModel):
         ):
             if len(entries) != len(set(keys)):
                 raise ValueError("duplicate metadata identity")
-        
+
         own = producers.get(self.producer_id)
-        
+
         if own is None or own.process != self.process or own.clock_domain_id != self.clock_domain_id:
             raise ValueError("metadata owner mismatch")
-        
+
         for producer in self.producers:
             domain = domains.get(producer.clock_domain_id)
             if domain is None or (producer.source == "host") != (domain.kind == "host_monotonic"):
                 raise ValueError("Producer clock domain mismatch")
             if producer.source == "device" and domain.process_creation_id != producer.process_creation_id:
                 raise ValueError("Device domain process mismatch")
-        
+
         for endpoint in self.endpoints:
             owner = producers.get(endpoint.owner_producer)
             if owner is None or owner.source != "device" or owner.process.runtime_role != "atnagent":
@@ -255,14 +256,14 @@ class Metadata(StrictModel):
             for site in endpoint.sites:
                 if site.producer not in producers or producers[site.producer].process.runtime_role != site.site:
                     raise ValueError("Endpoint site mismatch")
-        
+
         templates = {(item.owner_producer, item.template_sequence) for item in self.graph_templates}
         for template in self.graph_templates:
             if template.owner_producer not in producers:
                 raise ValueError("Graph owner unavailable")
             if any((template.owner_producer, child) not in templates for child in template.compute_templates):
                 raise ValueError("Compute template unavailable")
-        
+
         return self
 
 
@@ -338,7 +339,7 @@ class Counters(StrictModel):
 class QualityCheckpoint(StrictModel):
     """Cumulative source counters with explicit finality and unknown-tail state."""
 
-    contract_version: Literal[1]
+    contract_version: Literal[2]
     run_id: str
     producer_id: PositiveU64
     revision: PositiveU64
@@ -360,7 +361,7 @@ class QualityCheckpoint(StrictModel):
         """Reject contradictory exact accounting while preserving lower bounds."""
         if str(UUID(self.run_id)) != self.run_id:
             raise ValueError("Run UUID must be canonical")
-        
+
         c = self.counters
 
         if self.exact_totals:
@@ -370,7 +371,7 @@ class QualityCheckpoint(StrictModel):
                 raise ValueError("attempt conservation violated")
             if not c.exported <= c.copied <= c.committed or c.exported + c.post_commit_lost > c.committed:
                 raise ValueError("export conservation violated")
-            
+
         return self
 
 

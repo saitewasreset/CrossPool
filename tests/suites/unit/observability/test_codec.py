@@ -1,5 +1,6 @@
 """Independent frozen byte vectors exercise the public wire boundary."""
 
+import hashlib
 import json
 import struct
 import zlib
@@ -11,11 +12,41 @@ from tests.suites.unit.observability.fixtures import events_for, scenario
 
 from xpool.observability.codec import encode_chunk, parse_chunk, validate_event
 from xpool.observability.errors import ErrorCode, ObservationError
-from xpool.observability.models import Metadata
+from xpool.observability.models import Metadata, QualityCheckpoint
 from xpool.observability.wire import PresenceBit
 
 fixture_root = Path(__file__).resolve().parents[4] / "docs/plans/unified-timeline-observability/fixtures"
 vectors = json.loads((fixture_root / "encoding.json").read_bytes())["vectors"]
+checksums = json.loads((fixture_root / "checksums.json").read_bytes())["files"]
+
+
+@pytest.mark.parametrize("entry", checksums, ids=lambda entry: entry["path"])
+def test_frozen_fixture_integrity(entry: dict) -> None:
+    data = (fixture_root / entry["path"]).read_bytes()
+    assert len(data) == entry["bytes"]
+    assert hashlib.sha256(data).hexdigest() == entry["sha256"]
+
+
+@pytest.mark.parametrize("version", [1, 3])
+@pytest.mark.parametrize("model", [Metadata, QualityCheckpoint])
+def test_artifact_version_is_rejected_before_schema_validation(
+    model: type[Metadata] | type[QualityCheckpoint], version: int
+) -> None:
+    path = Path("artifact.json")
+    with pytest.raises(ObservationError) as caught:
+        model.parse_artifact(json.dumps({"contract_version": version}).encode(), path, ErrorCode.INVALID_EVENT)
+    assert caught.value.code == ErrorCode.UNSUPPORTED_VERSION
+    assert caught.value.path == path
+
+
+@pytest.mark.parametrize("version", [1, 3])
+def test_chunk_version_is_rejected_before_checksums(version: int) -> None:
+    data = bytearray.fromhex(vectors[0]["hex"])
+    struct.pack_into("<H", data, 8, version)
+    with pytest.raises(ObservationError) as caught:
+        parse_chunk(bytes(data), None)
+    assert caught.value.code == ErrorCode.UNSUPPORTED_VERSION
+    assert caught.value.offset == 8
 
 
 @pytest.mark.parametrize("vector", vectors, ids=[item["id"] for item in vectors])
@@ -54,10 +85,10 @@ def test_valid_crcs_do_not_hide_invalid_semantics(offset: int, value: int, code:
 @pytest.mark.parametrize(
     "mutation,code",
     [
-        (b'{"contract_version":2}', "unsupported_version"),
-        (b'{"contract_version":1,"contract_version":1}', "metadata_unavailable"),
-        (b'{"contract_version":1,"configuration":{"bad":NaN}}', "metadata_unavailable"),
-        (b'{"contract_version":1,"configuration":{"bad":1e400}}', "metadata_unavailable"),
+        (b'{"contract_version":1}', "unsupported_version"),
+        (b'{"contract_version":2,"contract_version":2}', "metadata_unavailable"),
+        (b'{"contract_version":2,"configuration":{"bad":NaN}}', "metadata_unavailable"),
+        (b'{"contract_version":2,"configuration":{"bad":1e400}}', "metadata_unavailable"),
     ],
 )
 def test_json_boundary_rejects_versions_duplicates_and_nonfinite(mutation: bytes, code: str) -> None:

@@ -14,6 +14,7 @@ from xpool.observability import (
     ArtifactInputs,
     AttachmentIndex,
     ChunkHeader,
+    EntityIdentity,
     ObservationError,
     RoutingAttachment,
     encode_chunk,
@@ -84,6 +85,25 @@ def test_published_files_out_of_order_duplicates_and_provenance(tmp_path: Path) 
     assert all(
         source.path in inputs.chunks and source.offset == 128 for edge in result.edges for source in edge.sources
     )
+
+
+@pytest.mark.parametrize(
+    "case_id", ["execution_never_returns", "execution_returns_failure", "invocation_multiple_graph_owners"]
+)
+def test_contract_v2_evidence_survives_file_round_trip(tmp_path: Path, case_id: str) -> None:
+    result = reconstruct(read_artifacts(write_inventory(tmp_path, scenario(case_id))))
+    expected = next(case["expected"] for case in fixture("causality")["cases"] if case["id"] == case_id)
+    assert all(document.contract_version == 2 for document in result.metadata)
+    relation = "invocation_to_graph_activity" if "graph_owners" in expected else "operation_to_invocation"
+    actual = [
+        [list(edge.origin.components), list(edge.destination.components)]
+        for edge in result.edges
+        if edge.relation == relation
+        and isinstance(edge.origin, EntityIdentity)
+        and isinstance(edge.destination, EntityIdentity)
+    ]
+    assert actual == expected[relation]
+    assert set(expected.get("quality", [])) <= result.quality.codes
 
 
 @pytest.mark.parametrize("failure", ["checksum", "path_escape", "identity"])

@@ -47,7 +47,7 @@ def scenario(case_id: str) -> dict:
 def metadata_for(data: dict) -> dict:
     metadata = copy.deepcopy(fixture("metadata"))
     overrides = data.get("metadata_overrides", {})
-    for name in ("producers", "clock_domains", "endpoints"):
+    for name in ("producers", "clock_domains", "endpoints", "graph_templates"):
         metadata[name].extend(overrides.get(f"{name}_add", []))
     for replacement in overrides.get("generations_replace", []):
         metadata["generations"] = [

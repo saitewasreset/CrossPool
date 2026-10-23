@@ -7,7 +7,7 @@ __all__ = ["ErrorCode", "ObservationError"]
 
 
 class ErrorCode(StrEnum):
-    """Stable v1 artifact error categories."""
+    """Stable artifact error categories."""
 
     HEADER_TRUNCATED = "header_truncated"
     BAD_MAGIC = "bad_magic"

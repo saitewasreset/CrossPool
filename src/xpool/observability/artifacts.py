@@ -129,7 +129,7 @@ def verify_tensors(path: Path, entry: RoutingAttachment, metadata: Metadata) -> 
                 raise ValueError("Routing attachment has no metadata")
 
             expected = {
-                "contract_version": "1",
+                "contract_version": "2",
                 "run_id": metadata.run_id,
                 "producer_id": str(entry.publisher),
                 "generation": generation.fabric_generation,
