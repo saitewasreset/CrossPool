@@ -433,7 +433,15 @@ def validate_event(event: Event) -> None:
         require(r.data2 == 0 or any(item.id == r.data2 for item in m.artifacts), "unknown Graph artifact")
     elif r.kind == EventKind.ROUTING_PUBLISHED:
         require(r.data0 in AttachmentState and r.data1 > 0 and r.data3 == r.data4 == 0, "invalid Routing payload")
-        require(r.data2 == 0 or any(item.id == r.data2 for item in m.artifacts), "unknown Routing artifact")
+        if r.data2 != 0:
+            artifact = next((item for item in m.artifacts if item.id == r.data2), None)
+            require(artifact is not None, "unknown Routing artifact")
+            if artifact is not None and (
+                artifact.kind != "routing" or artifact.status != "published" or not artifact.path or not artifact.sha256
+            ):
+                raise event_error(
+                    ErrorCode.IDENTITY_CONFLICT, "Routing reference requires a published Routing artifact", event
+                )
     else:
         require(
             r.presence == 0 and r.role == EventRole.COLLECTOR and producer.source == "host", "invalid sampling source"

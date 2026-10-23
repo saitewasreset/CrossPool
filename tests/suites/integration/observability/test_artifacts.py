@@ -22,9 +22,12 @@ from xpool.observability import (
     read_artifacts,
     reconstruct,
 )
+from xpool.observability.models import Artifact
 
 
-def write_inventory(root: Path, data: dict) -> ArtifactInputs:
+def write_inventory(
+    root: Path, data: dict, *, artifacts: tuple[Artifact, ...] | None = None, revision: int = 1
+) -> ArtifactInputs:
     events = events_for(data)
     chunks: list[Path] = []
     metadata_paths: dict[int, Path] = {}
@@ -32,11 +35,14 @@ def write_inventory(root: Path, data: dict) -> ArtifactInputs:
     for sequence, event in enumerate(events, 1):
         producer = event.source.identity.producer
         if producer not in metadata_paths:
-            metadata_path = root / f"metadata.{producer}.1.json"
+            metadata_path = root / f"metadata.{producer}.{revision}.json"
             metadata_paths[producer] = metadata_path
-            metadata_bytes[producer] = event.metadata.model_dump_json().encode()
+            document = event.metadata.model_copy(update={"revision": revision})
+            if artifacts is not None:
+                document = document.model_copy(update={"artifacts": list(artifacts)})
+            metadata_bytes[producer] = document.model_dump_json().encode()
             metadata_path.write_bytes(metadata_bytes[producer])
-        header = ChunkHeader(event.metadata.run_id, producer, sequence, 1, 0, 10000)
+        header = ChunkHeader(event.metadata.run_id, producer, sequence, revision, 0, 10000)
         chunk_path = root / f"{producer}.{sequence}.xpool"
         chunk_path.write_bytes(encode_chunk(header, (event.record,), metadata_bytes[producer]))
         chunks.append(chunk_path)
@@ -45,6 +51,130 @@ def write_inventory(root: Path, data: dict) -> ArtifactInputs:
         path.write_text(json.dumps(metadata_for(data)))
         metadata_paths[3] = path
     return ArtifactInputs(tuple(chunks), tuple(metadata_paths.values()))
+
+
+@pytest.fixture
+def routing_entry() -> RoutingAttachment:
+    return RoutingAttachment.model_validate(fixture("routing")["cases"][0]["input"]["attachments"][0])
+
+
+def write_referenced_routing_inventory(
+    root: Path, entry: RoutingAttachment, *, reference: int = 2, revision: int = 1
+) -> ArtifactInputs:
+    data = copy.deepcopy(fixture("routing")["cases"][0]["input"])
+    data["events"][0]["record"]["data2"] = reference
+    artifact = Artifact(id=2, kind="routing", status="published", path=entry.path, sha256=entry.sha256)
+    inputs = write_inventory(root, data, artifacts=(artifact,), revision=revision)
+    (root / "routing.safetensors").write_bytes((fixture_root / "routing.safetensors").read_bytes())
+    index = AttachmentIndex(fixture("metadata")["run_id"], 5, (entry,), True)
+    return ArtifactInputs(inputs.chunks, inputs.metadata, attachment_indices=(index,), attachment_root=root)
+
+
+@pytest.mark.parametrize("reference", [0, 2])
+def test_routing_reference_resolves_the_matching_attachment(
+    tmp_path: Path, routing_entry: RoutingAttachment, reference: int
+) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry, reference=reference)
+    result = reconstruct(read_artifacts(inputs))
+    evidence = result.attachments[0]
+    assert (evidence.run_id, evidence.owner, evidence.sequence) == (fixture("metadata")["run_id"], 5, 1)
+    assert evidence.available and evidence.status == "published"
+    assert evidence.path == tmp_path / "routing.safetensors"
+    assert not any(code.startswith("attachment_") for code in result.quality.codes)
+
+
+@pytest.mark.parametrize("conflict", ["path", "sha256", "status"])
+def test_routing_reference_must_match_the_final_index(
+    tmp_path: Path, routing_entry: RoutingAttachment, conflict: str
+) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry)
+    changes = {
+        "path": {"path": "other.safetensors"},
+        "sha256": {"sha256": "0" * 64},
+        "status": {"status": "publish_failed", "path": None, "sha256": None},
+    }[conflict]
+    entry = RoutingAttachment.model_validate(routing_entry.model_dump() | changes)
+    index = AttachmentIndex(fixture("metadata")["run_id"], 5, (entry,), True)
+    with pytest.raises(ObservationError) as caught:
+        read_artifacts(
+            ArtifactInputs(inputs.chunks, inputs.metadata, attachment_indices=(index,), attachment_root=tmp_path)
+        )
+    assert caught.value.code == "identity_conflict"
+    assert caught.value.path == inputs.chunks[0]
+    assert caught.value.offset == 128
+    assert caught.value.producer == 5
+    assert caught.value.event_sequence == 10
+
+
+@pytest.mark.parametrize("reverse_metadata", [False, True])
+def test_routing_reference_uses_the_events_metadata_revision(
+    tmp_path: Path, routing_entry: RoutingAttachment, reverse_metadata: bool
+) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry, revision=2)
+    data = json.loads(inputs.metadata[0].read_bytes())
+    data["revision"] = 1
+    data["artifacts"] = []
+    earlier = tmp_path / "metadata.5.1.json"
+    earlier.write_text(json.dumps(data))
+    metadata = (earlier, *inputs.metadata) if reverse_metadata else (*inputs.metadata, earlier)
+    result = reconstruct(
+        read_artifacts(
+            ArtifactInputs(
+                inputs.chunks, metadata, attachment_indices=inputs.attachment_indices, attachment_root=tmp_path
+            )
+        )
+    )
+    assert result.attachments[0].available
+    assert result.attachments[0].path == tmp_path / "routing.safetensors"
+
+
+@pytest.mark.parametrize("reverse_metadata", [False, True])
+def test_routing_reference_does_not_allow_artifact_redefinition(
+    tmp_path: Path, routing_entry: RoutingAttachment, reverse_metadata: bool
+) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry)
+    data = json.loads(inputs.metadata[0].read_bytes())
+    data["revision"] = 2
+    data["artifacts"][0]["path"] = "other.safetensors"
+    later = tmp_path / "metadata.5.2.json"
+    later.write_text(json.dumps(data))
+    metadata = (later, *inputs.metadata) if reverse_metadata else (*inputs.metadata, later)
+    artifacts = read_artifacts(
+        ArtifactInputs(inputs.chunks, metadata, attachment_indices=inputs.attachment_indices, attachment_root=tmp_path)
+    )
+    assert artifacts.attachments[0].available
+    with pytest.raises(ObservationError) as caught:
+        reconstruct(artifacts)
+    assert caught.value.code == "identity_conflict"
+    assert caught.value.producer == 5
+
+
+@pytest.mark.parametrize("closing_complete,code", [(False, "tail_unknown"), (True, "attachment_missing")])
+def test_routing_reference_does_not_replace_the_final_index(
+    tmp_path: Path, routing_entry: RoutingAttachment, closing_complete: bool, code: str
+) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry)
+    index = AttachmentIndex(fixture("metadata")["run_id"], 5, (), closing_complete)
+    result = reconstruct(
+        read_artifacts(
+            ArtifactInputs(inputs.chunks, inputs.metadata, attachment_indices=(index,), attachment_root=tmp_path)
+        )
+    )
+    assert not result.attachments[0].available
+    assert result.attachments[0].entry is None
+    assert result.attachments[0].status == ("missing" if closing_complete else "unknown")
+    assert any(
+        finding.code == code and finding.sources == result.attachments[0].sources for finding in result.quality.findings
+    )
+
+
+def test_routing_reference_keeps_missing_files_explicit(tmp_path: Path, routing_entry: RoutingAttachment) -> None:
+    inputs = write_referenced_routing_inventory(tmp_path, routing_entry)
+    (tmp_path / "routing.safetensors").unlink()
+    result = reconstruct(read_artifacts(inputs))
+    assert not result.attachments[0].available
+    assert result.attachments[0].status == "missing"
+    assert "attachment_missing" in result.quality.codes
 
 
 @pytest.mark.parametrize("case", fixture("routing")["cases"], ids=lambda case: case["id"])

@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 from safetensors import SafetensorError, safe_open
 
-from xpool.observability.codec import Chunk, parse_chunk
+from xpool.observability.codec import Chunk, event_error, parse_chunk
 from xpool.observability.errors import ErrorCode, ObservationError
 from xpool.observability.models import (
     U64,
@@ -255,6 +255,14 @@ def resolve_attachments(
         for event in published_events:
             r = event.record
             known_status = attachment_outcome_names.get(r.data0)
+
+            # Artifact IDs are local to the referencing event's metadata revision.
+            if entry is not None and r.data2 != 0:
+                artifact = next(item for item in event.metadata.artifacts if item.id == r.data2)
+                if entry.status != "published" or (artifact.path, artifact.sha256) != (entry.path, entry.sha256):
+                    raise event_error(
+                        ErrorCode.IDENTITY_CONFLICT, "Routing artifact reference disagrees with attachment index", event
+                    )
 
             if entry is not None and known_status is not None and entry.status != known_status:
                 raise ObservationError(

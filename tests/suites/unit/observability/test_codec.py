@@ -8,16 +8,55 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from tests.suites.unit.observability.fixtures import events_for, scenario
+from tests.suites.unit.observability.fixtures import events_for, fixture, scenario
 
 from xpool.observability.codec import encode_chunk, parse_chunk, validate_event
 from xpool.observability.errors import ErrorCode, ObservationError
-from xpool.observability.models import Metadata, QualityCheckpoint
+from xpool.observability.models import Artifact, Metadata, QualityCheckpoint
 from xpool.observability.wire import PresenceBit
 
 fixture_root = Path(__file__).resolve().parents[4] / "docs/plans/unified-timeline-observability/fixtures"
 vectors = json.loads((fixture_root / "encoding.json").read_bytes())["vectors"]
 checksums = json.loads((fixture_root / "checksums.json").read_bytes())["files"]
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"kind": "graph_structure"},
+        {"status": "unavailable"},
+        {"status": "missing"},
+        {"status": "publish_failed"},
+        {"path": None},
+        {"path": ""},
+        {"sha256": None},
+        {"sha256": ""},
+    ],
+)
+def test_routing_reference_requires_a_published_routing_artifact(changes: dict) -> None:
+    event = events_for(fixture("routing")["cases"][0]["input"])[0]
+    artifact = Artifact.model_validate(
+        {"id": 2, "kind": "routing", "status": "published", "path": "routing.safetensors", "sha256": "a" * 64} | changes
+    )
+    event = replace(
+        event,
+        record=event.record.model_copy(update={"data2": 2}),
+        metadata=event.metadata.model_copy(update={"artifacts": [artifact]}),
+    )
+    with pytest.raises(ObservationError) as caught:
+        validate_event(event)
+    assert caught.value.code == ErrorCode.IDENTITY_CONFLICT
+    assert caught.value.path == event.source.path
+    assert caught.value.offset == event.source.offset
+    assert caught.value.producer == event.source.identity.producer
+    assert caught.value.event_sequence == event.record.event_sequence
+
+
+def test_unknown_routing_artifact_reference_is_invalid() -> None:
+    event = events_for(fixture("routing")["cases"][0]["input"])[0]
+    with pytest.raises(ObservationError) as caught:
+        validate_event(replace(event, record=event.record.model_copy(update={"data2": 999})))
+    assert caught.value.code == ErrorCode.INVALID_EVENT
 
 
 @pytest.mark.parametrize("entry", checksums, ids=lambda entry: entry["path"])

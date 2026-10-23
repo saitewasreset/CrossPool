@@ -132,6 +132,14 @@ Invocation, Lease, publisher/domain/time, keys, shape and dtypes. Missing files,
 uncollected tensors, pool exhaustion, payload overflow, publication failure and
 unknown tails remain different findings. A retained tensor never manufactures
 a lost publication event. Relative artifact paths must remain inside their root.
+An event's nonzero Routing artifact ID resolves in its own metadata revision
+to a published artifact of kind `routing` with a nonempty path and SHA-256.
+When a final attachment entry exists, its published status, path and SHA-256
+must agree with that reference; conflicts are structured identity errors.
+A zero artifact ID continues to resolve through the attachment identity.
+Without a final index, even a nonzero reference leaves attachment availability
+unknown or missing according to the owner's closing state. Artifact declarations
+remain immutable across metadata revisions; later revisions may add new IDs.
 Graph structure artifacts remain metadata references rather than execution slices.
 
 Quality checkpoints are cumulative per Producer and revision; consumers select
