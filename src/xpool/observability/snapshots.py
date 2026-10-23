@@ -139,13 +139,13 @@ def legacy_durations(observation: Observation, findings: list[Finding]) -> dict[
             findings.append(Finding("temporal_conflict", f"legacy {name} reversed", sources))
         else:
             durations[name] = end.record.raw_time_ns - start.record.raw_time_ns
-    
+
     for event in observation.events.values():
         if event.record.raw_time_ns == 0:
             findings.append(
                 Finding("legacy_zero_timestamp", "recorded raw zero projects as legacy zero", (event.source,))
             )
-    
+
     return durations
 
 
@@ -166,7 +166,7 @@ def transport_record(observation: Observation, findings: list[Finding]) -> Trans
             Finding("legacy_fact_missing", "Transport scalar facts unavailable", tuple(observation.sources))
         )
         return None
-    
+
     times = {
         name: observation.events[kind].record.raw_time_ns if kind in observation.events else 0
         for kind, name in enumerate(transport_times, EventKind.REQUEST_STAGING_STARTED)
@@ -174,7 +174,7 @@ def transport_record(observation: Observation, findings: list[Finding]) -> Trans
 
     if "result_code" not in facts:
         findings.append(Finding("unknown_result", "site-local result unavailable", tuple(observation.sources)))
-    
+
     return TransportRecordJson(
         trace_id=facts["local_trace_id"],
         payload_rows=facts["payload_rows"],
@@ -217,11 +217,11 @@ def fabric_record(observation: Observation, scheduler: str, findings: list[Findi
         required += ("ready_ticket",)
     elif role == EventRole.FFNAGENT:
         required += ("lane_index", "lease_sequence", "payload_row_capacity", "delivery")
-    
+
     if any(name not in facts for name in required):
         findings.append(Finding("legacy_fact_missing", "Fabric scalar facts unavailable", tuple(observation.sources)))
         return None
-    
+
     fields = FabricRecordFieldsJson(
         local_trace_id=facts["local_trace_id"],
         instance_index=facts["instance_index"],
@@ -230,20 +230,20 @@ def fabric_record(observation: Observation, scheduler: str, findings: list[Findi
         payload_rows=facts["payload_rows"],
         output_requirement=output_names[facts["output_requirement"]],
     )
-    
+
     start = {
         EventRole.ATNAGENT: EventKind.SUBMISSION_PREPARED,
         EventRole.COORDINATOR: EventKind.ENQUEUED,
         EventRole.FFNAGENT: EventKind.LANE_EXECUTION_OBSERVED,
     }[role]
-    
+
     events_ns = {
         name: observation.events[kind].record.raw_time_ns if kind in observation.events else 0
         for kind, name in enumerate(fabric_times[role], start)
     }
-    
+
     durations_ns = legacy_durations(observation, findings)
-    
+
     if role == EventRole.ATNAGENT:
         return FabricAtnAgentRecordJson(
             **fields,
@@ -258,7 +258,7 @@ def fabric_record(observation: Observation, scheduler: str, findings: list[Findi
             events_ns=events_ns,
             durations_ns=durations_ns,
         )
-    
+
     if role == EventRole.COORDINATOR:
         return FabricCoordinatorRecordJson(
             **fields,
@@ -274,7 +274,7 @@ def fabric_record(observation: Observation, scheduler: str, findings: list[Findi
             events_ns=events_ns,
             durations_ns=durations_ns,
         )
-    
+
     return FabricFfnAgentRecordJson(
         **fields,
         kind="ffnagent",
