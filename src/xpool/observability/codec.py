@@ -146,7 +146,7 @@ kind_names: dict[int, str] = {
     EventKind.CALIBRATION_SAMPLE_FAILED: "CalibrationSampleFailed",
 }
 
-CHUNK_MAGIC = b"XPOOLC02"
+CHUNK_MAGIC = b"XPOOLC03"
 
 
 @dataclass(frozen=True)
@@ -170,7 +170,13 @@ class Chunk:
     events: tuple[Event, ...]
 
 
-def event_error(code: ErrorCode, detail: str, event: Event) -> ObservationError:
+def event_error(
+    code: ErrorCode,
+    detail: str,
+    event: Event,
+    *,
+    sources: tuple[Source, ...] = (),
+) -> ObservationError:
     source = event.source
     return ObservationError(
         code,
@@ -179,6 +185,7 @@ def event_error(code: ErrorCode, detail: str, event: Event) -> ObservationError:
         offset=source.offset,
         producer=source.identity.producer,
         event_sequence=event.record.event_sequence,
+        sources=sources or (source,),
     )
 
 
@@ -500,7 +507,7 @@ def parse_chunk(data: bytes, metadata_bytes: bytes | None, *, path: Path = Path(
     if magic != CHUNK_MAGIC:
         raise fail(ErrorCode.BAD_MAGIC, "invalid chunk magic")
 
-    if version != 2:
+    if version != 3:
         raise fail(ErrorCode.UNSUPPORTED_VERSION, f"unsupported chunk version {version}", 8)
 
     if (header_bytes, event_bytes, flags) != (128, 256, 0):
@@ -578,14 +585,14 @@ def encode_chunk(header: ChunkHeader, records: tuple[EventRecord, ...], metadata
     """Encode canonical fields independently of Native layouts and validate the result.
 
     Raises:
-        ObservationError: If the requested chunk violates the v2 contract.
+        ObservationError: If the requested chunk violates the v3 contract.
     """
     try:
         payload = b"".join(event_struct.pack(*(getattr(record, name) for name in event_fields)) for record in records)
         packed = bytearray(
             header_struct.pack(
                 CHUNK_MAGIC,
-                2,
+                3,
                 128,
                 256,
                 0,

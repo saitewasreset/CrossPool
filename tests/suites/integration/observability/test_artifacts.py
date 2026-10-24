@@ -8,17 +8,20 @@ from pathlib import Path
 import pytest
 from pydantic import TypeAdapter
 from safetensors import safe_open
-from tests.suites.unit.observability.fixtures import events_for, fixture, fixture_root, metadata_for, scenario
+from tests.suites.unit.observability.fixtures import events_for, expand, fixture, fixture_root, metadata_for, scenario
 
 from xpool.observability import (
     ArtifactInputs,
     AttachmentIndex,
     ChunkHeader,
     EntityIdentity,
+    Metadata,
     ObservationError,
     RoutingAttachment,
+    SnapshotRequest,
     encode_chunk,
     parse_chunk,
+    project_legacy_snapshots,
     read_artifacts,
     reconstruct,
 )
@@ -220,10 +223,10 @@ def test_published_files_out_of_order_duplicates_and_provenance(tmp_path: Path) 
 @pytest.mark.parametrize(
     "case_id", ["execution_never_returns", "execution_returns_failure", "invocation_multiple_graph_owners"]
 )
-def test_contract_v2_evidence_survives_file_round_trip(tmp_path: Path, case_id: str) -> None:
+def test_contract_v3_evidence_survives_file_round_trip(tmp_path: Path, case_id: str) -> None:
     result = reconstruct(read_artifacts(write_inventory(tmp_path, scenario(case_id))))
     expected = next(case["expected"] for case in fixture("causality")["cases"] if case["id"] == case_id)
-    assert all(document.contract_version == 2 for document in result.metadata)
+    assert all(document.contract_version == 3 for document in result.metadata)
     relation = "invocation_to_graph_activity" if "graph_owners" in expected else "operation_to_invocation"
     actual = [
         [list(edge.origin.components), list(edge.destination.components)]
@@ -308,3 +311,45 @@ def test_conflicting_chunk_publication_is_not_deduplicated(tmp_path: Path) -> No
     with pytest.raises(ObservationError) as caught:
         read_artifacts(ArtifactInputs((*inputs.chunks, duplicate), inputs.metadata))
     assert caught.value.code == "identity_conflict"
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    [
+        "opening_event_lost_scalar_facts_recovered",
+        "auxiliary_evidence_missing_required_scalars",
+        "unknown_tail_keeps_counts_unknown",
+        "unobserved_fabric_id_does_not_infer_role",
+    ],
+)
+def test_v3_snapshot_reports_survive_published_file_round_trip(tmp_path: Path, case_id: str) -> None:
+    case = next(c for c in fixture("snapshots")["cases"] if c["id"] == case_id)
+    data = expand(case["input"])
+    inputs = write_inventory(tmp_path, data)
+    # Preserve the reference metadata revision explicitly provided by the fixture.
+    metadata = Metadata.model_validate(metadata_for(data))
+    reference = tmp_path / "reference-metadata.json"
+    reference.write_text(metadata.model_dump_json())
+    inventory = read_artifacts(ArtifactInputs(tuple(reversed(inputs.chunks)), (reference, *inputs.metadata)))
+    selection, counts = data["select"], data["operation_counts"]
+    request = SnapshotRequest(
+        metadata.run_id,
+        selection["producer"],
+        1,
+        counts["sequence"],
+        counts["capacity"],
+        (2, 1) if selection["observer"] == "transport" else None,
+    )
+    projection = project_legacy_snapshots(reconstruct(inventory), (request,))[0]
+    expected = case["expected"]
+    assert projection.evidence_report is not None
+    report = projection.evidence_report.model_dump(mode="json")
+    if "evidence_report" in expected:
+        assert report == expected["evidence_report"]
+    else:
+        assert report["entries"] == [expected["evidence_entry"]]
+    if "legacy_record" in expected:
+        assert list(projection.records) == ([] if expected["legacy_record"] is None else [expected["legacy_record"]])
+    else:
+        assert list(projection.records) == expected["legacy_records"]
+    assert all(e.source.path in inputs.chunks for e in inventory.events)

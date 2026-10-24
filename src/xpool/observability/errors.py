@@ -2,6 +2,10 @@
 
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from xpool.observability.models import Source
 
 __all__ = ["ErrorCode", "ObservationError"]
 
@@ -36,6 +40,7 @@ class ObservationError(ValueError):
         offset: int | None = None,
         producer: int | None = None,
         event_sequence: int | None = None,
+        sources: tuple["Source", ...] = (),
     ) -> None:
         self.code = code
         self.detail = detail
@@ -43,4 +48,5 @@ class ObservationError(ValueError):
         self.offset = offset
         self.producer = producer
         self.event_sequence = event_sequence
+        self.sources = sources
         super().__init__(f"{code.value}: {detail}" + (f" ({path}:{offset})" if path else ""))

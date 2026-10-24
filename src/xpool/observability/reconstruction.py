@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import Literal
 
+from xpool.observability.applicability import boundary_applicability
 from xpool.observability.artifacts import ArtifactSet, AttachmentEvidence, resolve_attachments
 from xpool.observability.codec import event_error, kind_names, presence_groups, validate_event
 from xpool.observability.errors import ErrorCode, ObservationError
@@ -66,8 +67,9 @@ class Observation:
     facts: dict[str, int] = field(default_factory=dict)
     events: dict[int, Event] = field(default_factory=dict)
     sources: list[Source] = field(default_factory=list)
+    fact_sources: dict[str, Event] = field(default_factory=dict)
 
-    def add(self, event: Event, findings: list[Finding]) -> None:
+    def add(self, event: Event, findings: list[Finding], *, boundary: bool = True) -> None:
         """Merge equal repeated facts and retain distinct boundary evidence."""
         record = event.record
         previous = self.events.get(record.kind)
@@ -78,10 +80,15 @@ class Observation:
             after = record.model_dump(exclude={"event_sequence"})
 
             if before != after:
-                raise event_error(ErrorCode.EVENT_CONFLICT, "conflicting boundary at the same observation", event)
+                raise event_error(
+                    ErrorCode.EVENT_CONFLICT,
+                    "conflicting boundary at the same observation",
+                    event,
+                    sources=(previous.source, event.source),
+                )
 
             findings.append(Finding("duplicate_event", "identical semantic boundary", (previous.source, event.source)))
-        else:
+        elif boundary:
             self.events[record.kind] = event
 
         for bit, names in presence_groups.items():
@@ -89,8 +96,16 @@ class Observation:
                 for name in names:
                     value = getattr(record, name)
                     if name in self.facts and self.facts[name] != value:
-                        raise event_error(ErrorCode.IDENTITY_CONFLICT, f"conflicting fact {name}", event)
+                        raise event_error(
+                            ErrorCode.IDENTITY_CONFLICT,
+                            f"conflicting fact {name}",
+                            event,
+                            sources=(self.fact_sources[name].source, event.source),
+                        )
                     self.facts[name] = value
+                    previous_source = self.fact_sources.get(name)
+                    if previous_source is None or event.source.identity < previous_source.source.identity:
+                        self.fact_sources[name] = event
 
         self.sources.append(event.source)
 
@@ -103,6 +118,7 @@ class Entity:
     observations: dict[ObservationIdentity, Observation] = field(default_factory=dict)
     facts: dict[str, int] = field(default_factory=dict)
     sources: list[Source] = field(default_factory=list)
+    fact_sources: dict[str, Event] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -242,6 +258,55 @@ def phase_interval(observation: Observation, name: str, begin_kind: int, end_kin
     )
 
 
+def protocol_temporal_conflicts(observation: Observation) -> tuple[Finding, ...]:
+    """Check local Hook precedence even when no legacy phase spans two Hooks."""
+    role = observation.identity.role
+    if observation.identity.entity.kind == "operation":
+        order = (
+            (
+                EventKind.REQUEST_STAGING_STARTED,
+                EventKind.REQUEST_STAGING_COMPLETED,
+                EventKind.REQUEST_PUBLISHED,
+                EventKind.RESULT_OBSERVED,
+                EventKind.OUTPUT_COPIED,
+                EventKind.RESULT_ACKNOWLEDGED,
+                EventKind.CLOSED,
+            )
+            if role == EventRole.INSTANCE
+            else (
+                EventKind.REQUEST_OBSERVED,
+                EventKind.EXECUTION_STARTED,
+                EventKind.EXECUTION_COMPLETED,
+                EventKind.RESULT_PUBLISHED,
+            )
+        )
+    elif role == EventRole.ATNAGENT:
+        order = tuple(range(EventKind.SUBMISSION_PREPARED, EventKind.OUTPUT_ACKNOWLEDGEMENT_PUBLISHED + 1))
+    elif role == EventRole.COORDINATOR:
+        order = tuple(range(EventKind.ENQUEUED, EventKind.LANE_RELEASED + 1))
+    else:
+        # The publisher releases routing from inside compute; peers observe it
+        # before compute. Enum ordinals alone do not express this partial order.
+        order = (
+            EventKind.LANE_EXECUTION_OBSERVED,
+            EventKind.INPUT_READY_OBSERVED,
+            EventKind.ROUTING_METADATA_OBSERVED,
+            EventKind.COMPUTE_STARTED,
+            EventKind.ROUTING_METADATA_PUBLISHED,
+            EventKind.COMPUTE_COMPLETED,
+            EventKind.PARTIAL_READY_PUBLISHED,
+            EventKind.PEER_PARTIALS_READY_OBSERVED,
+            EventKind.COMPLETION_PUBLISHED,
+        )
+    retained = [observation.events[k] for k in order if k in observation.events]
+    return tuple(
+        Finding("temporal_conflict", "local protocol Hook order reversed", (begin.source, end.source))
+        for begin, end in pairwise(retained)
+        if begin.record.clock_domain_id == end.record.clock_domain_id
+        and begin.record.raw_time_ns > end.record.raw_time_ns
+    )
+
+
 def check_metadata_revisions(metadata: Iterable[Metadata]) -> tuple[Metadata, ...]:
     """Reject changed immutable references across revisions, processes and chunks."""
     retained: dict[tuple[str, int, int], Metadata] = {}
@@ -343,7 +408,12 @@ def reconstruct(
 
         if previous is not None:
             if previous.record != event.record:
-                raise event_error(ErrorCode.EVENT_CONFLICT, "event identity has different bytes", event)
+                raise event_error(
+                    ErrorCode.EVENT_CONFLICT,
+                    "event identity has different bytes",
+                    event,
+                    sources=(previous.source, event.source),
+                )
             findings.append(Finding("duplicate_event", "repeated event identity", (previous.source, event.source)))
         else:
             retained[identity] = event
@@ -412,8 +482,22 @@ def reconstruct(
                     if any(r.has(group) and name in names for group, names in presence_groups.items()):
                         value = getattr(r, name)
                         if name in entity.facts and entity.facts[name] != value:
-                            raise event_error(ErrorCode.IDENTITY_CONFLICT, f"conflicting fact {name}", event)
+                            local_observation = entity.observations.get(
+                                ObservationIdentity(entity.identity, event.source.identity.producer, EventRole(r.role))
+                            )
+                            previous_fact = (
+                                local_observation.fact_sources.get(name, entity.fact_sources[name])
+                                if local_observation is not None
+                                else entity.fact_sources[name]
+                            )
+                            raise event_error(
+                                ErrorCode.IDENTITY_CONFLICT,
+                                f"conflicting fact {name}",
+                                event,
+                                sources=(previous_fact.source, event.source),
+                            )
                         entity.facts[name] = value
+                        entity.fact_sources.setdefault(name, event)
 
         # Only the owning family mutates a local observation. Association facts
         # remain evidence for edges and cannot manufacture a Fabric boundary.
@@ -444,6 +528,25 @@ def reconstruct(
             observation_id = ObservationIdentity(entity.identity, event.source.identity.producer, EventRole(r.role))
             observation = entity.observations.setdefault(observation_id, Observation(observation_id))
             observation.add(event, findings)
+
+        # Auxiliary Graph evidence recovers only explicitly carried local facts.
+        # It never enters the protocol boundary map or borrows another site's ID.
+        if family == "graph_execution" and r.has(PresenceBit.LOCAL_TRACE_ID):
+            auxiliary_family = "invocation" if r.role == EventRole.FFNAGENT else "operation"
+            auxiliary_key = keys.get(auxiliary_family)
+            if auxiliary_key is not None:
+                local_site = auxiliary_family == "invocation" or any(
+                    (e.owner_producer, e.endpoint_sequence) == auxiliary_key.components[:2]
+                    and any(site.producer == event.source.identity.producer for site in e.sites)
+                    for e in event.metadata.endpoints
+                )
+                if local_site:
+                    entity = entities[auxiliary_key]
+                    observation_id = ObservationIdentity(
+                        auxiliary_key, event.source.identity.producer, EventRole(r.role)
+                    )
+                    observation = entity.observations.setdefault(observation_id, Observation(observation_id))
+                    observation.add(event, findings, boundary=False)
 
         for relation, left, right, condition in (
             ("operation_to_invocation", "operation", "invocation", r.kind == EventKind.TRANSPORT_FABRIC_ASSOCIATED),
@@ -553,41 +656,12 @@ def reconstruct(
                         and pair[1] in (EventKind.REQUEST_OBSERVED, EventKind.EXECUTION_STARTED)
                     )
                 )
-                terminal = EventKind.RESULT_ACKNOWLEDGED if role == EventRole.INSTANCE else EventKind.RESULT_PUBLISHED
-                if terminal not in observation.events and EventKind.CLOSED not in observation.events:
-                    findings.append(
-                        Finding("event_missing", "Transport terminal unavailable", tuple(observation.sources))
-                    )
                 if "result_code" not in observation.facts:
                     findings.append(
                         Finding("unknown_result", "site-local result unavailable", tuple(observation.sources))
                     )
             elif identity.kind == "invocation":
                 pairs = fabric_pairs[observation.identity.role]
-                expected = set(
-                    range(EventKind.SUBMISSION_PREPARED, EventKind.OUTPUT_ACKNOWLEDGEMENT_PUBLISHED + 1)
-                    if observation.identity.role == EventRole.ATNAGENT
-                    else range(EventKind.ENQUEUED, EventKind.LANE_RELEASED + 1)
-                    if observation.identity.role == EventRole.COORDINATOR
-                    else (
-                        EventKind.LANE_EXECUTION_OBSERVED,
-                        EventKind.INPUT_READY_OBSERVED,
-                        EventKind.COMPUTE_STARTED,
-                        EventKind.COMPUTE_COMPLETED,
-                        EventKind.PARTIAL_READY_PUBLISHED,
-                        EventKind.PEER_PARTIALS_READY_OBSERVED,
-                        EventKind.COMPLETION_PUBLISHED,
-                    )
-                )
-                missing = expected - observation.events.keys()
-                if missing:
-                    findings.append(
-                        Finding(
-                            "event_missing",
-                            "missing boundaries: " + ", ".join(kind_names[x] for x in sorted(missing)),
-                            tuple(observation.sources),
-                        )
-                    )
             else:
                 pairs = tuple(
                     pair
@@ -599,6 +673,24 @@ def reconstruct(
                         and failure_kind in observation.events
                     )
                 )
+            if identity.kind in ("operation", "invocation"):
+                findings.extend(protocol_temporal_conflicts(observation))
+                applicability = boundary_applicability(observation, documents_tuple)
+                missing = applicability.required - observation.events.keys()
+                if missing:
+                    findings.append(
+                        Finding(
+                            "event_missing",
+                            "missing boundaries: " + ", ".join(kind_names[x] for x in sorted(missing)),
+                            tuple(observation.sources),
+                        )
+                    )
+                if applicability.unknown:
+                    findings.append(
+                        Finding(
+                            "applicability_unknown", "conditional protocol path unresolved", tuple(observation.sources)
+                        )
+                    )
             for name, start, end in pairs:
                 # Closed and normal acknowledged totals are alternative paths.
                 if (
@@ -607,9 +699,25 @@ def reconstruct(
                     and EventKind.CLOSED not in observation.events
                 ):
                     continue
-                if identity.kind == "operation" and EventKind.CLOSED in observation.events and name != "closed_total":
+                if identity.kind in ("operation", "invocation") and (
+                    start in applicability.inapplicable or end in applicability.inapplicable
+                ):
                     continue
                 interval = phase_interval(observation, name, start, end)
+                if (
+                    identity.kind in ("operation", "invocation")
+                    and interval.reasons == ("event_missing",)
+                    and (start in applicability.unknown or end in applicability.unknown)
+                ):
+                    interval = Interval(
+                        interval.observation,
+                        name,
+                        interval.begin,
+                        interval.end,
+                        "partial",
+                        None,
+                        ("applicability_unknown",),
+                    )
                 intervals.append(interval)
                 for reason in interval.reasons:
                     findings.append(Finding(reason, f"{name}: incomplete or invalid boundaries", interval.sources))

@@ -66,7 +66,7 @@ def test_frozen_fixture_integrity(entry: dict) -> None:
     assert hashlib.sha256(data).hexdigest() == entry["sha256"]
 
 
-@pytest.mark.parametrize("version", [1, 3])
+@pytest.mark.parametrize("version", [1, 2, 4])
 @pytest.mark.parametrize("model", [Metadata, QualityCheckpoint])
 def test_artifact_version_is_rejected_before_schema_validation(
     model: type[Metadata] | type[QualityCheckpoint], version: int
@@ -78,7 +78,7 @@ def test_artifact_version_is_rejected_before_schema_validation(
     assert caught.value.path == path
 
 
-@pytest.mark.parametrize("version", [1, 3])
+@pytest.mark.parametrize("version", [1, 2, 4])
 def test_chunk_version_is_rejected_before_checksums(version: int) -> None:
     data = bytearray.fromhex(vectors[0]["hex"])
     struct.pack_into("<H", data, 8, version)
@@ -125,9 +125,9 @@ def test_valid_crcs_do_not_hide_invalid_semantics(offset: int, value: int, code:
     "mutation,code",
     [
         (b'{"contract_version":1}', "unsupported_version"),
-        (b'{"contract_version":2,"contract_version":2}', "metadata_unavailable"),
-        (b'{"contract_version":2,"configuration":{"bad":NaN}}', "metadata_unavailable"),
-        (b'{"contract_version":2,"configuration":{"bad":1e400}}', "metadata_unavailable"),
+        (b'{"contract_version":3,"contract_version":3}', "metadata_unavailable"),
+        (b'{"contract_version":3,"configuration":{"bad":NaN}}', "metadata_unavailable"),
+        (b'{"contract_version":3,"configuration":{"bad":1e400}}', "metadata_unavailable"),
     ],
 )
 def test_json_boundary_rejects_versions_duplicates_and_nonfinite(mutation: bytes, code: str) -> None:

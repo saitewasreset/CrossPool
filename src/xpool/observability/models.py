@@ -1,4 +1,4 @@
-"""Strict version-two artifact declarations and provenance values."""
+"""Strict version-three artifact declarations and provenance values."""
 
 import json
 import math
@@ -64,7 +64,7 @@ class StrictModel(BaseModel):
             if (
                 isinstance(value, dict)
                 and type(value.get("contract_version")) is int
-                and value["contract_version"] != 2
+                and value["contract_version"] != 3
             ):
                 raise ObservationError(ErrorCode.UNSUPPORTED_VERSION, "unsupported artifact version", path=path)
 
@@ -198,7 +198,7 @@ class Capabilities(StrictModel):
 class Metadata(StrictModel):
     """One immutable, hash-addressed Producer metadata revision."""
 
-    contract_version: Literal[2]
+    contract_version: Literal[3]
     run_id: str
     producer_id: PositiveU64
     revision: PositiveU64
@@ -339,7 +339,7 @@ class Counters(StrictModel):
 class QualityCheckpoint(StrictModel):
     """Cumulative source counters with explicit finality and unknown-tail state."""
 
-    contract_version: Literal[2]
+    contract_version: Literal[3]
     run_id: str
     producer_id: PositiveU64
     revision: PositiveU64

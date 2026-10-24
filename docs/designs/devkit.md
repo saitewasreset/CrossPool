@@ -85,7 +85,7 @@ and the separate semantic qualification assertions.
 
 ## Offline observation artifacts
 
-`xpool.observability` reads the version-two raw observation contract through an
+`xpool.observability` reads the version-three raw observation contract through an
 explicit inventory of published chunk, metadata and quality files. The caller
 supplies typed Routing attachment indices, their Run/owner completion scopes,
 and an attachment root. It does not discover directories, parse temporary tails,
@@ -97,8 +97,10 @@ layouts. It validates header layout/CRC, declared lengths, exact metadata hashes
 and identities, payload CRC, and event semantics in that order. JSON inputs
 reject duplicate keys, coercion and non-finite constants. Errors retain a stable
 `ErrorCode`, path, offset and available Producer/event identity; underlying I/O
-and parsing failures remain attached as causes.
-Chunks use `XPOOLC02` and version 2; metadata, quality checkpoints and Routing
+and parsing failures remain attached as causes. Repeated scalar conflicts and
+conflicting Event boundaries also retain both source references; a local scalar
+conflict prefers the earlier local observation over an equivalent remote fact.
+Chunks use `XPOOLC03` and version 3; metadata, quality checkpoints and Routing
 tensors carry the same contract version. Other versions fail explicitly.
 Generation topology preserves optional FFN TP width when supplied in metadata.
 
@@ -152,13 +154,48 @@ Legacy projection takes explicit per-lifetime operation-attempt totals and
 capacities. Transport domains name their exact Endpoint; Fabric domains name
 their Generation/Producer. The earliest local IDs remain eligible even when
 opening events are lost, and the full offline inventory remains available.
-Unknown attempt totals make the projection unavailable instead of using an
-observed maximum. Missing scalar facts omit only the affected record; unknown
-site-local results preserve the legacy sentinel with separate quality. Source
-provenance, unobserved-operation counts and omitted-record counts accompany the
-unchanged legacy JSON. Raw zero timestamps remain retained but cannot provide
-legacy durations. Existing percentile indices and terminal classifications are
-preserved.
+Unknown attempt totals leave the whole snapshot envelope unavailable while
+preserving individually projected records and their evidence report. Missing
+required scalar facts omit only the affected record; unknown site-local results
+preserve the legacy sentinel with separate quality. Auxiliary Graph evidence
+with an actual local identity can recover only explicitly present facts and
+never supplies protocol timestamps or another participant's scalar facts.
+
+Each `LegacyProjection` contains `request`, `snapshot`, `records`,
+`evidence_report`, and `findings`. `SnapshotEvidenceReport` owns per-field
+provenance, exact or unknown counts, and one entry per eligible local ID.
+Entries distinguish retained, omitted, and entirely unobserved operations;
+unobserved Fabric IDs retain an unknown role and unknown protocol identities.
+Unknown counts expose only positively identified eligible IDs. Disabled or
+unavailable observers return no separate report. Offline reports carry no
+published snapshot hash; this library does not publish paired snapshot files.
+
+Evidence completeness is independent of legacy terminal classification. A
+retained acknowledgement can classify a record as completed while missing
+intermediate Hooks leave partial evidence. Repeated scalar facts never restore
+missing timestamps. Fields distinguish unknown values, definitely missing
+applicable boundaries, unresolved conditional applicability, and inapplicable
+paths. Canonical field sources use the smallest Event identity; metadata
+references use the first supplied revision containing the needed fact and the
+lexically smallest equivalent JSON path. Supply authoritative metadata before
+Event-derived revisions when a particular equivalent revision should own report
+provenance. Repeated Events retain all offline raw locations but do not expand
+per-field report sources.
+
+DirectPartial excludes partial publication and peer waits. Complete delivery
+also excludes these Hooks when retained zero-row facts or a sole FfnAgent prove
+there can be no destination or active reader with peers. Otherwise missing
+participant selection stays unknown. An explicit not-applicable Routing
+capability can justify the corresponding exclusion; disabled, unavailable or
+enabled observation alone does not establish a layer's Dense/MoE path or its
+publisher/waiter selection. Opaque Graph structure references are not parsed to
+invent this missing evidence. Closed and non-Ok results do not establish the
+exact earlier stopping point.
+
+Raw zero timestamps remain observed evidence but cannot provide legacy
+durations. Reversed local Hook order marks partial evidence and preserves raw
+values; only invalid phase samples are suppressed. Existing percentile indices,
+phase-specific sample counts and terminal classifications are preserved.
 
 Chunks are validated separately; retained offline identities and evidence grow
 with input size. Runtime collection memory budgets do not bound this offline
@@ -181,11 +218,15 @@ inputs = ArtifactInputs(
 view = reconstruct(read_artifacts(inputs))
 # These identity values and original attempt count come from the caller's
 # inventory, not from event count or the largest observed local ID.
-projection = project_legacy_snapshots(
+(projection,) = project_legacy_snapshots(
     view,
     (SnapshotRequest(view.metadata[0].run_id, producer=3, generation=1,
                      operations_attempted=10, endpoint=(2, 1)),),
 )
+records = projection.records
+report = projection.evidence_report
+# snapshot is None when totals or required envelope metadata are unknown.
+snapshot = projection.snapshot
 ```
 
 Pass `AttachmentIndex` values and `attachment_root` when resolving Routing

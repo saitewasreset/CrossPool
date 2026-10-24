@@ -18,7 +18,11 @@ def fixture(name: str) -> dict:
 def scenario(case_id: str) -> dict:
     cases = fixture("causality")["cases"]
     case = next(case for case in cases if case["id"] == case_id)
-    data = copy.deepcopy(case["input"])
+    return expand(case["input"])
+
+
+def expand(data: dict) -> dict:
+    data = copy.deepcopy(data)
     if "base_case" not in data:
         return data
     base = scenario(data.pop("base_case"))

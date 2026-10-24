@@ -9,6 +9,16 @@ from xpool.observability.artifacts import (
 )
 from xpool.observability.codec import Chunk, ChunkHeader, encode_chunk, parse_chunk
 from xpool.observability.errors import ErrorCode, ObservationError
+from xpool.observability.evidence import (
+    EvidenceReason,
+    EvidenceStatus,
+    FieldEvidence,
+    ProjectionStatus,
+    SnapshotEvidenceEntry,
+    SnapshotEvidenceReport,
+    SnapshotObserver,
+    SnapshotRole,
+)
 from xpool.observability.models import (
     CalibrationSample,
     Event,
@@ -47,17 +57,25 @@ __all__ = [
     "Event",
     "EventIdentity",
     "EventRecord",
+    "EvidenceReason",
+    "EvidenceStatus",
+    "FieldEvidence",
     "Finding",
     "Interval",
     "LegacyProjection",
     "Metadata",
     "Observation",
     "ObservationError",
+    "ProjectionStatus",
     "QualityCheckpoint",
     "QualityReport",
     "Reconstruction",
     "RoutingAttachment",
+    "SnapshotEvidenceEntry",
+    "SnapshotEvidenceReport",
+    "SnapshotObserver",
     "SnapshotRequest",
+    "SnapshotRole",
     "Source",
     "encode_chunk",
     "parse_chunk",

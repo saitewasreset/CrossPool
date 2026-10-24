@@ -1,4 +1,4 @@
-"""Independent version-two observation wire values; no Native imports required."""
+"""Independent version-three observation wire values; no Native imports required."""
 
 from enum import IntEnum, unique
 
@@ -23,7 +23,7 @@ __all__ = [
 
 @unique
 class PresenceBit(IntEnum):
-    """Bit indices, not masks, for version-two semantic field groups."""
+    """Bit indices, not masks, for version-three semantic field groups."""
 
     GENERATION = 0
     ENDPOINT = 1
