@@ -6,6 +6,7 @@
 #include <torch/csrc/utils/pybind.h>
 
 #include "bindings.hpp"
+#include <xpool/devkit/capacity_counter.hpp>
 #include <xpool/devkit/fabric_observer.hpp>
 #include <xpool/devkit/ffn_routing_observer.hpp>
 #include <xpool/devkit/graph_observer.hpp>
@@ -233,6 +234,18 @@ namespace xpool::bindings {
 
 void bind_devkit(py::module_ &module) {
   auto devkit = module.def_submodule("devkit", "Development-only native observation interfaces.");
+  auto counter = devkit.def_submodule("capacity_counter", "Quiescent-only experimental rate histograms.");
+  using CounterSnapshot = xpool::devkit::capacity_counter::Snapshot;
+  py::class_<CounterSnapshot>(counter, "Snapshot", "Independent Device-clock experiment histogram.")
+      .def_readonly("origin_ns", &CounterSnapshot::origin_ns, "Raw Device origin.")
+      .def_readonly("last_ns", &CounterSnapshot::last_ns, "Raw last Device activity.")
+      .def_readonly("outside_window", &CounterSnapshot::outside_window, "Out-of-window attempts.")
+      .def_readonly("arithmetic_overflow", &CounterSnapshot::arithmetic_overflow, "Arithmetic failure flag.")
+      .def_readonly("allocation_bytes", &CounterSnapshot::allocation_bytes, "Experiment Device bytes.")
+      .def_readonly("buckets", &CounterSnapshot::buckets, "Ten-ms metric buckets.");
+  counter.def("finish", &xpool::devkit::capacity_counter::finish,
+              "Read and free counters only after all local producers are quiescent.",
+              py::call_guard<py::gil_scoped_release>());
   auto fabric = devkit.def_submodule("fabric_observer", "Per-PE Fabric protocol observation.");
   auto graph = devkit.def_submodule("graph_observer", "FfnAgent CUDA Graph observation.");
   auto routing = devkit.def_submodule("ffn_routing_observer", "FfnAgent routing observation.");

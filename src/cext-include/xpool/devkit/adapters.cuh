@@ -48,11 +48,27 @@ struct DeviceAdapter {
 
 } // namespace xpool::devkit::transport_observer
 
+namespace xpool::devkit::capacity_counter {
+/// Experiment counters independent of legacy observer enablement and capacity.
+struct DeviceAdapter {
+  /// Count an Instance protocol boundary.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::TransportInstanceProtocolEvent, observe, context);
+  /// Count an attention participant's Transport boundary.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::TransportAtnAgentProtocolEvent, observe, context);
+  /// Count a Fabric submission boundary.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::FabricAtnAgentProtocolEvent, observe, context);
+  /// Count a Coordinator boundary.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::FabricCoordinatorProtocolEvent, observe, context);
+  /// Count one collective FfnAgent boundary from CTA thread zero.
+  static XPOOL_DEVICE_HOOK_FN(xpool::hooks::FabricFfnAgentProtocolEvent, observe, context);
+};
+} // namespace xpool::devkit::capacity_counter
+
 namespace xpool::devkit {
 
 /// Compile-time catalog of built-in Device devkit adapters.
-using DeviceAdapters = xpool::hooks::DeviceAdapterRegistry<xpool::devkit::transport_observer::DeviceAdapter,
-                                                           xpool::devkit::fabric_observer::DeviceAdapter,
-                                                           xpool::devkit::ffn_routing_observer::DeviceAdapter>;
+using DeviceAdapters = xpool::hooks::DeviceAdapterRegistry<
+    xpool::devkit::capacity_counter::DeviceAdapter, xpool::devkit::transport_observer::DeviceAdapter,
+    xpool::devkit::fabric_observer::DeviceAdapter, xpool::devkit::ffn_routing_observer::DeviceAdapter>;
 
 } // namespace xpool::devkit

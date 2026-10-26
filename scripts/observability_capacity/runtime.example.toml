@@ -1,0 +1,51 @@
+cache_root = "../.xpool-cache"
+
+[daemon]
+host = "127.0.0.1"
+port = 9810
+
+[logging]
+level = "info"
+color = true
+
+[scheduler]
+# Reserved for future attention compute admission.
+atn_concurrency = 1
+# Executor Lane count materialized for each Fabric generation.
+ffn_concurrency = 1
+ffn_policy = "fifo"
+slo = { ttft_ms = 1000, tbt_ms = 50 }
+# Optional and used only when ffn_policy = "random"; omitted means generated.
+# ffn_random_seed = 1
+
+[atn]
+devices = [0]
+device_memory_utilization = 0.95
+
+[ffn]
+devices = [1]
+device_memory_extra_margin_bytes = 0
+# Optional environment-qualified profile produced by CrossPool memory-profile.
+# device_memory_calibration = "/absolute/path/to/memory-calibration.json"
+
+[ffn.loader]
+parallelism = 4
+
+[ffn.placement]
+parallelism = 4
+timeout_seconds = 60
+
+[vendor]
+model_base_uri = "/absolute/path/to/models"
+
+[[models]]
+id = "deepseek-ai/DeepSeek-V2-Lite-Chat"
+# Optional absolute override instead of vendor.model_base_uri resolution.
+# path = "/absolute/path/to/deepseek-ai/DeepSeek-V2-Lite-Chat"
+# Optional fixed FFN tensor-parallel width; defaults to the FfnAgent fleet width.
+# ffn_tp_size = 1
+
+[[models]]
+id = "Qwen/Qwen3-0.6B"
+# Optional complete model-specific latency objective override.
+# slo = { ttft_ms = 800, tbt_ms = 40 }

@@ -56,6 +56,9 @@ The active [Shared Observability Contract](unified-timeline-observability/README
 defines the single-Host Transport/Fabric/Graph/Routing target, versioned artifact interfaces,
 deterministic calibration, and fixed reference fixtures for parallel implementation.
 Runtime implementation and real Device qualification remain subsequent work.
+The [capacity experiment](observability-capacity-experiment/README.md) estimates
+event and attachment demand against measured copy/file service before Collector
+implementation; its results remain scoped to the observed configurations.
 
 - **Class:** Platform Capability.
 - **Outcome:** One queryable and visualizable causal timeline spanning the

@@ -123,6 +123,33 @@ CONFIG_REGISTRY: tuple[ConfigSetting, ...] = (
         description="Whether CrossPool runtime log levels use ANSI color on TTY stderr.",
     ),
     ConfigSetting(
+        name="debug_capacity_counter_enable",
+        path=("debug", "capacity_counter", "enable"),
+        parser="bool",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=False,
+        env_var="XPOOL_DEBUG_CAPACITY_COUNTER_ENABLE",
+        description="Experimental bounded capacity counter enable.",
+    ),
+    ConfigSetting(
+        name="debug_capacity_counter_outdir",
+        path=("debug", "capacity_counter", "outdir"),
+        parser="raw",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=None,
+        env_var="XPOOL_DEBUG_CAPACITY_COUNTER_OUTDIR",
+        description="Experimental bounded capacity counter outdir.",
+    ),
+    ConfigSetting(
+        name="debug_capacity_counter_bucket_count",
+        path=("debug", "capacity_counter", "bucket_count"),
+        parser="int",
+        allowed_sources=(ConfigSource.ENV, ConfigSource.DEFAULT),
+        default=120000,
+        env_var="XPOOL_DEBUG_CAPACITY_COUNTER_BUCKET_COUNT",
+        description="Experimental bounded capacity counter bucket_count.",
+    ),
+    ConfigSetting(
         name="debug_graph_observer_enable",
         path=("debug", "graph_observer", "enable"),
         parser="bool",
@@ -869,11 +896,30 @@ class FfnRoutingObserverDebugConfig(BaseModel):
         return self
 
 
+class CapacityCounterDebugConfig(BaseModel):
+    """Bounded experiment-only Device histogram, read after quiescence."""
+
+    model_config = ConfigDict(extra="forbid")
+    enable: bool = False
+    outdir: Path | None = None
+    bucket_count: int = Field(default=120000, ge=1, le=360000)
+
+    @model_validator(mode="after")
+    def validate_destination(self) -> CapacityCounterDebugConfig:
+        """Require enablement and an absolute output destination together."""
+        if self.enable != (self.outdir is not None):
+            raise ValueError("capacity_counter.enable and outdir must be set together")
+        if self.outdir is not None and not self.outdir.is_absolute():
+            raise ValueError("capacity_counter.outdir must be absolute")
+        return self
+
+
 class DebugConfig(BaseModel):
     """Debug-only runtime switches resolved through the config registry."""
 
     model_config = ConfigDict(extra="forbid")
 
+    capacity_counter: CapacityCounterDebugConfig = Field(default_factory=CapacityCounterDebugConfig)
     graph_observer: GraphObserverDebugConfig = Field(
         default_factory=GraphObserverDebugConfig,
         description="SGLang and native FFN CUDA Graph observer debug settings.",
@@ -899,6 +945,9 @@ class DebugConfig(BaseModel):
         """Project the exact device-runtime debug options to native values."""
 
         return xpool.native.debug.Options(
+            capacity_counter=xpool.native.debug.CapacityCounterOptions(
+                self.capacity_counter.enable, self.capacity_counter.bucket_count
+            ),
             transport_observer=xpool.native.debug.TraceObserverOptions(
                 enable=self.transport_observer.enable,
                 record_capacity=self.transport_observer.record_capacity,
@@ -907,7 +956,9 @@ class DebugConfig(BaseModel):
                 enable=self.fabric_observer.enable,
                 record_capacity=self.fabric_observer.record_capacity,
             ),
-            graph_observer=xpool.native.debug.GraphObserverOptions(enable=self.graph_observer.enable),
+            graph_observer=xpool.native.debug.GraphObserverOptions(
+                enable=self.graph_observer.enable or self.capacity_counter.enable
+            ),
             ffn_routing_observer=xpool.native.debug.FfnRoutingObserverOptions(
                 enable=self.ffn_routing_observer.enable,
                 record_capacity=self.ffn_routing_observer.record_capacity,

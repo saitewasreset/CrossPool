@@ -42,8 +42,19 @@ struct FfnRoutingObserverOptions {
   constexpr bool operator==(const FfnRoutingObserverOptions &) const = default;
 };
 
+/// Bounded experiment histogram settings; every bucket covers ten milliseconds.
+struct CapacityCounterOptions {
+  /// Install independent counters without enabling legacy records.
+  bool enable = false;
+  /// Maximum ten-millisecond buckets retained from first Device activity.
+  std::size_t bucket_count = 120000;
+  constexpr bool operator==(const CapacityCounterOptions &) const = default;
+};
+
 /// Process-wide typed native debug options installed during initialization.
 struct Options {
+  /// Experimental production-rate histogram settings.
+  CapacityCounterOptions capacity_counter;
   /// Local CUDA IPC transport trace settings.
   TraceObserverOptions transport_observer;
   /// Cross-Agent NVSHMEM Fabric trace settings.

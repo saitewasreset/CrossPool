@@ -8,6 +8,7 @@
 #include <c10/util/Exception.h>
 #include <cuda_runtime_api.h>
 
+#include <xpool/devkit/capacity_counter.hpp>
 #include <xpool/macros.hpp>
 
 namespace xpool::debug {
@@ -36,6 +37,10 @@ void configure(const Options &debug_options, std::optional<c10::DeviceIndex> dev
     C10_CUDA_CHECK(cudaMemcpyToSymbol(options_d, &debug_options, sizeof(debug_options)));
   }
   options_h = debug_options;
+  if (device.has_value()) {
+    c10::cuda::CUDAGuard device_guard(*device);
+    xpool::devkit::capacity_counter::initialize();
+  }
   configured_device = device;
   configured = true;
 }

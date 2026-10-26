@@ -139,6 +139,10 @@ to the [Quick Start sync command](docs/tutorials/quick-start.md#install).
 
 ## Serving Benchmarks
 
+For user-run observability production-rate and copy/file sizing experiments, see
+the [capacity experiment](scripts/observability_capacity/README.md). Results are
+estimates scoped to the measured workload and hardware.
+
 `xbench` measures multi-model serving through native SGLang streaming, either
 against external endpoints or by starting a declared CrossPool deployment.
 Each case fixes models, topology and workload; `run` retains measurements and

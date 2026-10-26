@@ -62,6 +62,37 @@ Native Graph snapshots expose CUDA node kinds as underlying integers; the
 Python Graph Observer resolves official cuda-python enum names only when
 constructing its JSON presentation.
 
+## Experimental capacity counters
+
+`debug.capacity_counter` enables independent, bounded ten-millisecond histograms
+for capacity experiments. Configuration is resolved through `xpool.config` before
+Native initialization. `enable` and an absolute `outdir` are supplied together;
+`bucket_count` defaults to 120,000 and is bounded by 360,000. The environment
+settings use the `XPOOL_DEBUG_CAPACITY_COUNTER_` prefix.
+
+One allocation is installed on the process Device before producer launch and
+Graph Capture. Its bytes are reported separately from timeline collection
+budgets and are already resident before the FfnAgent free-memory registration.
+Counters operate independently of legacy observer enablement and retention.
+They count real Transport/Fabric boundaries, association/publication projections,
+Routing payload bytes and a separate Graph-activity estimate. FfnAgent collective
+boundaries select CTA thread zero. Window exhaustion and arithmetic overflow
+invalidate complete-window estimates instead of appearing as zero production.
+
+Readout is once per experimental process lifetime. Instance readout follows a
+successful Native detach, which supplies Device synchronization. Agent readout
+follows the local `DRAINED` report, including the production drain boundary.
+Native finish selects the allocation's owning Device, copies the bounded
+histogram, clears its Device view and frees it. Failed retirement supplies no
+safe readout. Export errors propagate. Host forward/capture/replay counters use
+their own monotonic domain; raw Device times are not a Host mapping.
+
+The maintained [capacity experiment](../../scripts/observability_capacity/README.md)
+provides user-run serving, synthetic asynchronous copy/publication probes and
+offline estimation. Its `EXPDRAIN` files are synthetic I/O evidence. These
+facilities do not implement the timeline Collector or establish real-machine
+loss, overhead, sustainable bandwidth or clock-calibration acceptance.
+
 ## Serialized observations
 
 Python Fabric and Transport writers own concrete JSON declarations shared by

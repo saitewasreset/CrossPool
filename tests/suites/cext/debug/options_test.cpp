@@ -4,6 +4,8 @@
 
 TEST(DebugOptionsTest, DefaultsToDisabledWithoutConfiguration) {
   const xpool::debug::Options defaults{};
+  EXPECT_FALSE(defaults.capacity_counter.enable);
+  EXPECT_EQ(defaults.capacity_counter.bucket_count, 120000U);
   EXPECT_FALSE(defaults.transport_observer.enable);
   EXPECT_EQ(defaults.transport_observer.record_capacity, 0U);
   EXPECT_FALSE(defaults.fabric_observer.enable);
