@@ -221,7 +221,7 @@ def run(output: Path, settings: DrainSettings) -> DrainResult:
 
     (output / "checksums.json").write_text(json.dumps(hashes, indent=2) + "\n")
     result = DrainResult(
-        device_uuid=torch.cuda.get_device_properties(0).uuid,
+        device_uuid=str(torch.cuda.get_device_properties(0).uuid),
         host_slots=settings.host_slots,
         chunk_bytes=settings.chunk_bytes,
         origin_monotonic_s=origin,

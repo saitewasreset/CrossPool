@@ -149,7 +149,7 @@ def _install() -> None:
         value = Histogram(
             pid=os.getpid(),
             role=TypeAdapter(Literal["instance", "atnagent", "ffnagent"]).validate_python(role.name.lower()),
-            device=torch.cuda.get_device_properties(torch.cuda.current_device()).uuid,
+            device=str(torch.cuda.get_device_properties(torch.cuda.current_device()).uuid),
             origin_ns=snapshot.origin_ns,
             last_ns=snapshot.last_ns,
             outside_window=snapshot.outside_window,

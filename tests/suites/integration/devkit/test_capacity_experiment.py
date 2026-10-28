@@ -10,6 +10,12 @@ from xbench.harness.serving.case import BenchCatalog, OwnedBenchCase
 from xpool.devkit.capacity_counter import Histogram, write_histogram
 
 
+class DeviceUuid:
+    # PyTorch returns a UUID object rather than a string at the CUDA boundary.
+    def __str__(self) -> str:
+        return "GPU-12345678-1234-5678-9abc-123456789abc"
+
+
 def histogram(counts: list[int]) -> Histogram:
     return Histogram(
         pid=1,
@@ -127,7 +133,7 @@ def test_instance_readout_follows_successful_native_detach(tmp_path: Path, monke
     monkeypatch.setattr(InstanceRankRuntime, "detach_arena", detach)
     monkeypatch.setattr(xpool.native.devkit.capacity_counter, "finish", finish)
     monkeypatch.setattr(torch.cuda, "current_device", lambda: 0)
-    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(uuid="GPU-test"))
+    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(uuid=DeviceUuid()))
     monkeypatch.setattr(counter, "installed", False)
     counter.install()
     counter.install()
@@ -135,7 +141,10 @@ def test_instance_readout_follows_successful_native_detach(tmp_path: Path, monke
     runtime.__dict__["arena_handle"] = object()
     runtime.detach_arena()
     assert order == ["detach-synchronized", "finish"]
-    assert len(list(tmp_path.glob("counter.*.json"))) == 1
+    paths = list(tmp_path.glob("counter.*.json"))
+    assert len(paths) == 1
+    result = Histogram.model_validate_json(paths[0].read_bytes())
+    assert result.device == str(DeviceUuid())
 
 
 def test_probe_header_corruption_and_report_errors_remain_explicit(tmp_path: Path) -> None:
@@ -160,6 +169,7 @@ def test_probe_writer_failure_propagates_with_bounded_host_pool(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import json
     from contextlib import nullcontext
     from types import SimpleNamespace
 
@@ -193,12 +203,24 @@ def test_probe_writer_failure_propagates_with_bounded_host_pool(
     monkeypatch.setattr(torch.cuda, "stream", lambda stream: nullcontext())
     monkeypatch.setattr(torch.cuda, "current_stream", lambda: SimpleNamespace(synchronize=lambda: None))
     monkeypatch.setattr(torch.cuda, "Event", lambda **kwargs: Event())
-    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(uuid="GPU-test"))
+    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(uuid=DeviceUuid()))
     settings = drain.DrainSettings(seconds=1, max_bytes=1024**2)
     result = drain.run(tmp_path / "complete", settings)
     assert result.verified and result.file_bytes == 1024**2
     assert len(result.transfers) == 1
     assert result.transfers[0].released_s >= result.transfers[0].published_s
+    assert result.device_uuid == str(DeviceUuid())
+    complete = tmp_path / "complete"
+    assert drain.DrainResult.model_validate_json((complete / "drain.json").read_bytes()) == result
+    verify(complete / "00000000.bin")
+
+    # The serialized Device identity must associate the probe with its histogram.
+    write_histogram(complete / "counter.1.json", histogram([1, 2]).model_copy(update={"device": str(DeviceUuid())}))
+    report(complete)
+    estimates = json.loads((complete / "estimates.json").read_text())
+    assert estimates["report_errors"] == {}
+    assert estimates["probe_windows"][0]["device_uuid"] == result.device_uuid
+    assert len(estimates["domains"]["counter.1.json"]["capacities"]) == 5
 
     def broken_publish(*args: object, **kwargs: object) -> None:
         raise OSError("injected writer failure")
