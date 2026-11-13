@@ -102,6 +102,11 @@ authoritative only when implemented.
 | Runtime disk | 1 GiB per process, including metadata, temporary files, snapshots, and attachments; reserve 8 MiB for metadata |
 | Additional shutdown wait | At most 5 seconds, bounded by the remaining production shutdown deadline |
 
+Device admission uses actual requested bytes for every distinct simultaneously
+live collection allocation, including packing, ReadToken, required state and
+alignment in addition to the categories listed above. The logical capacity
+example alone cannot prove that the runtime fits the budget.
+
 Routing tensor pools and Graph structural artifacts keep their independent
 memory capacities. Added identity fields enter their sizing and admission.
 The event budget is not a bound on all Observer memory. Startup rejects a
@@ -115,6 +120,10 @@ reason. Atomic same-directory publication provides a recoverable complete-file
 prefix under a healthy filesystem; it does not promise power-loss durability.
 Timed-out CUDA or IPC users retain their resources until production retirement
 proves safe release. Crashed or unpublished tails remain unknown.
+Transfer failures use public io_error and failed export while retaining the first
+stop reason. Completion uncertainty independently requires resource retention,
+an unknown tail, and non-exact totals; see [quality and transfer failures](
+shared-contract.md#quality-attachments-and-configuration).
 
 ## Implementation and Validation
 
@@ -156,6 +165,15 @@ exhaustion, I/O failure, quota exhaustion, and background-thread shutdown.
 Follow [test conventions](../../../tests/README.md), repository-managed Ruff,
 type, and clang-format checks. Native Host tests attempt ASAN/UBSAN with the
 required execution approval.
+
+Device admission checks must include implementation allocations beyond the
+logical example, shared frame/token/control counted once, Host/Device placement,
+alignment, over-budget rejection, overflow, and unknown required sizes. Transfer
+failure checks must cover public io_error, bounded specific diagnostics, retained
+in-flight resources and charges, and a later uncertain transfer after an earlier
+stop reason. Also verify that a file I/O failure with independently proven
+completion can retain exact counts, while unknown work never gains invented
+copied/exported/lost counts.
 
 Real acceptance follows [Qualification](../../designs/qualification.md).
 Prepare a two-Device batch for user execution: Qwen3-0.6B Dense followed by

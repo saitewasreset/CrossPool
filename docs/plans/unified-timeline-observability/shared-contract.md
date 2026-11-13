@@ -204,8 +204,26 @@ existing Host collection budget, not the Device budget.
 
 ### Device collection budget composition
 
-`debug.timeline.device_bytes` (default 8388608) must cover, per
-process/Device:
+`debug.timeline.device_bytes` remains 8,388,608 bytes (8 MiB) by default per
+process/Device. Before observation starts, admit the complete actual allocation
+requirement of the active configuration:
+
+```text
+A = distinct simultaneously live Device allocations required by the configuration
+device_bytes_required = sum(requested_bytes_including_alignment(a) for a in A)
+device_bytes_required <= debug.timeline.device_bytes
+```
+
+Include event payload and slot control, packing buffers, ReadToken storage,
+necessary source/transfer/Hook state, and enabled IPC regions, Graph Context,
+and sampler storage. Use each owner's actual allocation layout and alignment.
+Count each allocation once: if a frame already contains its token or control
+storage, do not add those fields again. Additional scratch and state are real
+allocation requirements, not alignment padding. Pinned frames and other Host
+allocations count toward the Host budget instead.
+
+The following logical capacity example describes the listed storage categories;
+it does not replace complete allocation admission:
 
 ```text
 logical_device_bytes =
@@ -214,8 +232,6 @@ logical_device_bytes =
   + context_slot_capacity * 40              # process-wide Dynamic Context
   + sampler_slot_capacity * 8               # calibration raw-G buffers
   + 256                                    # fixed Collector control
-
-device_bytes_required = logical_device_bytes + allocation_alignment_bytes
 ```
 
 Recommended defaults: `device_event_slot_capacity=16384`, `endpoint_capacity=8`,
@@ -231,14 +247,14 @@ values:
 total        = 4,459,336 bytes
 ```
 
-This logical byte total is below the 8,388,608-byte default. Startup includes
-per-allocation alignment rounding in addition to these logical sizes before
-comparing the complete requirement with the budget. It computes
-`device_bytes_required` from the active configuration and rejects the process if it exceeds `device_bytes`,
-per the existing rule that startup rejects a configuration whose minimum
-allocations exceed its budget. The example includes all listed resources;
-actual per-process admission includes only active categories and counts each
-physical allocation once. FfnAgents have no Endpoint IPC regions. Context is
+This logical byte total is below the default, but does not prove that the
+complete runtime allocation requirement fits. Use actual requested allocation
+sizes for admission, including implementation storage absent from the example.
+Do not add the example's control allowance again when the same storage is
+already included in an actual layout. Reject startup if the complete requirement
+exceeds `device_bytes`, its arithmetic overflows, or a required size is unknown;
+never silently enlarge the budget. Admission includes only active categories.
+FfnAgents have no Endpoint IPC regions. Context is
 charged to its actual Graph owner, while sampler storage exists only when
 calibration is enabled. Independent observers include their required identity
 allocations even when Unified Timeline is disabled.
@@ -669,6 +685,30 @@ or missing-fact diagnostics; do not accumulate an unbounded runtime issue list.
 Collection state is active/stopped/closed; export is active/failed/closed.
 Stop reason is null, disk_quota, io_error, metadata_unavailable,
 identity_exhausted, or shutdown_deadline. Tail is complete/pending/unknown.
+
+A Native `CollectionErrorCode::Transfer` failure maps to the existing public
+`stop_reason=io_error` and `export_state=failed`. Preserve the first non-null
+stop reason if one was already recorded; a later transfer failure still marks
+export failed and carries its independent completion uncertainty. Retain the
+first specific failure diagnostic, including the failing operation and available
+CUDA cause, in bounded storage admitted to the Host budget. Use existing Native
+error/logging paths; do not add a public error category, quality JSON field, or
+unbounded exception history. The Native Transfer enum remains unchanged.
+
+Error classification is not proof of CUDA completion or safe reclamation. If
+completion or reclamation is uncertain, retain the affected slots, ReadToken,
+transfer frames, CUDA/IPC owners, and their memory charges until retirement
+proves release safe. A stop request, timeout, failed completion query, or file
+publication cannot authorize early reuse or release. Report `tail=unknown`,
+`exact_totals=false`, and `pending=null` wherever pending cannot be established.
+Preserve reliable prefixes and counter lower bounds; do not invent copied,
+exported, or lost counts for unknown work.
+
+Track this uncertainty independently of the first stop reason, so an earlier
+shutdown_deadline or other reason cannot hide a later uncertain transfer.
+Conversely, an ordinary file io_error does not itself make CUDA completion
+unknown; independently proven exact counts and a complete tail remain valid.
+
 Routing event loss, tensor loss, payload oversize, and file-publication failure
 are independent statuses. Dense advertises Routing capability `not_applicable`.
 
@@ -699,10 +739,11 @@ disk_bytes=1073741824, metadata_reserve_bytes=8388608, shutdown_wait_ms=5000,
 calibration_block_attempts=10, device_event_slot_capacity=16384,
 endpoint_capacity=8, context_slot_capacity=64, and sampler_slot_capacity=1. Enable and outdir must be set together.
 Block attempts is fixed to ten in v4. `device_event_slot_capacity`,
-`endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are positive; startup first evaluates the device
-collection budget composition formula against `device_bytes` using these
-four values, then validates each remaining positive resource value against
-the minimum required allocations and chunk layout; chunk_bytes
+`endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are
+positive. Startup evaluates the [complete Device allocation requirement](
+#device-collection-budget-composition) against `device_bytes` using the active
+configuration and actual owner layouts, then validates each remaining positive
+resource value against the minimum required allocations and chunk layout; chunk_bytes
 cannot exceed 1 MiB and shutdown_wait_ms cannot exceed 5000. Run-wide policy
 is installed before workers start. Configuration uses the existing environment
 registration/precedence rules and rejects inconsistent participants at preparation.
