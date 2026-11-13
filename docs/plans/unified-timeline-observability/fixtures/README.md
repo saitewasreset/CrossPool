@@ -1,4 +1,4 @@
-# Reference Fixtures v4
+# Reference Fixtures v5
 
 These immutable inputs and expected outputs implement the
 [shared contract](../shared-contract.md) and [calibration algorithm](../calibration.md).
@@ -12,6 +12,7 @@ starts from a fresh Run state; identical IDs across scenarios never join them.
 | --- | --- |
 | [layout.json](layout.json) | Complete 256-byte field table, presence groups, event IDs, and FFN enums |
 | [metadata.json](metadata.json) | Immutable metadata revision used by valid raw encoding; SHA-256 is over its exact bytes |
+| [metadata-atnagent.json](metadata-atnagent.json) | The same registered identities with an AtnAgent Producer envelope for anomalous raw chunks |
 | [identity-lifecycle.json](identity-lifecycle.json) | Allocation/policy and diagnostic preconditions, Generation-scoped PE membership, and observed-process registration boundary |
 | [encoding.json](encoding.json) | Full one-event chunk hex and malformed variants with exact structured errors |
 | [causality.json](causality.json) | Complete/partial events, explicit associations, Replay/Eager, identity isolation, Context, tokens, quota, and tail cases |
@@ -29,7 +30,7 @@ updates version, bytes, semantic expectations, and checksums together.
 
 ## Case Interpretation
 
-JSON top-level contract_version is 4. Each `cases` entry has a unique `id`,
+JSON top-level contract_version is 5. Each `cases` entry has a unique `id`,
 `input`, and `expected`. Expected dictionaries are assertions on the named
 properties, not a license to discard other quality evidence. The complete
 `normal_dense` case and snapshot projections specify full ordinary behavior.
@@ -56,6 +57,13 @@ definitions; generations_replace replaces the matching Generation by ID. Scenari
 overrides replace the named capabilities for that scenario.
 Independent scenario IDs are not serialized into the production format.
 
+Encoding vectors use the top-level metadata file unless a vector supplies its
+own `metadata` filename. Each chunk's Producer, process and clock must agree
+with that exact source-specific document, including its SHA-256 prefix.
+TransportAnomaly uses kind 150 and RawRequest bit 18; its data0 identifies the
+original boundary and data1 through data4 preserve raw request values. Bit 18
+does not control payload words belonging to other Event families.
+
 Membership cases in identity-lifecycle.json use `membership_metadata` to name
 their base metadata file. Their `metadata_overrides` also permit
 `generations_add`, `producers_replace`, and `clock_domains_replace`, keyed by
@@ -66,8 +74,8 @@ names an earlier immutable revision for cross-revision membership validation.
 is the ordered result, with null for a nonmember or absent Generation evidence.
 An unresolved positive Generation reference is an error, not a null result.
 `events` checks recording-source membership and, when present, the Event's PE.
-Malformed metadata errors precede event validation. The raw vectors reject both
-a v3 header version and a complete v3 chunk without compatibility decoding.
+Malformed metadata errors precede event validation. The raw vectors reject
+a v4 header version and complete v4/v3 chunks without compatibility decoding.
 Daemon registration
 expectations describe launcher behavior, not an additional serialized Event role.
 
@@ -150,19 +158,49 @@ The event's artifact_id is zero because runtime file publication occurs later;
 the exact attachment identity resolves the final index. Not-collected, pool
 capacity, payload oversize, I/O failure, missing file, and unknown crashed tail
 are different expected outcomes. Safetensors metadata records preserve their
-baseline Invocation fields and adds the association fields defined by v4.
+baseline Invocation fields and adds the association fields defined by v5.
 
 The identity-lifecycle cases describe preparation and diagnostic interfaces:
 allocation is required by Unified Timeline, Transport Observer, or an explicitly
 identity-dependent consumer, rather than by Graph/Routing enablement alone.
 Diagnostic availability is a precondition result; equal Context generations do
 not validate live mutable storage. The stale graph field in the live-peek case
-is deliberately invalid diagnostic input, not part of the version 4 IPC layout.
+is deliberately invalid diagnostic input, not part of the version 5 IPC layout.
 The causal cases execution_never_returns and execution_returns_failure retain
 the entry edge without inventing FFN completion. invocation_multiple_graph_owners
 preserves separate FfnAgent executions under one Invocation. Attributed SGLang
 edges originate in Instance evidence; AtnAgent Transport events carry no Graph
 identity obtained from another process.
+
+## Anomalous Transport Examples
+
+The anomaly snapshot cases supply their own metadata and complete Event list,
+without base_case expansion. Select the indicated Producer/observer and apply
+operation_counts at the same cutoff. The all-events-lost case additionally
+provides the site, Endpoint and Generation because no Event can supply them.
+Its description is not evidence that the missing operation was anomalous.
+The forward-mode case also supplies expected.legacy_snapshot as a complete
+empty legacy projection and expected.evidence_report from that same cutoff.
+Its quality pair case hashes the exact legacy envelope using the serialization
+convention above; omission does not turn its observed operation into unobserved.
+
+Every full evidence entry, including ordinary/Fabric/unobserved examples, has
+invalid_fields, raw_request and terminal_boundaries. Observed invalid enums
+omit the typed legacy Record with invalid_request and retained raw values;
+they are not unknown fields or unobserved operations. Missing required scalars
+independently use legacy_fact_missing. Terminal boundaries use CamelCase wire
+names and original boundary-number order, retaining zero timestamps and actual
+results. Opening-only evidence proves no result publication; terminal-only
+evidence recovers request scalars but not the opening timestamp.
+
+Fixed examples cover each enum, combined invalid values including UINT32_MAX,
+Shutdown, zero time, opening/terminal/all loss, semantic duplicates and request,
+result, boundary and Event-identity conflicts. Legal-enum geometry rejection
+uses ordinary Events and no anomaly report payload. The lower-bound quality
+case distinguishes retained anomalous Operations from Event attempts and loss.
+Raw encoding vectors cover every original boundary and reject invalid masks,
+presence, boundary/site and result combinations. Expected bytes and semantic
+values are independent of runtime encoders and readers.
 
 ## Numerical Oracles
 

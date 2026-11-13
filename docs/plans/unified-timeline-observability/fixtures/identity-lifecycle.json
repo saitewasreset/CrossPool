@@ -1,5 +1,5 @@
 {
-  "contract_version": 4,
+  "contract_version": 5,
   "cases": [
     {
       "id": "allocation_000",
@@ -1397,6 +1397,26 @@
       },
       "expected": {
         "error": "invalid_event"
+      }
+    },
+    {
+      "id": "contract_version_admitted",
+      "input": {
+        "local_contract_version": 5,
+        "peer_contract_version": 5
+      },
+      "expected": {
+        "startup_accepted": true
+      }
+    },
+    {
+      "id": "contract_version_mismatch",
+      "input": {
+        "local_contract_version": 5,
+        "peer_contract_version": 4
+      },
+      "expected": {
+        "startup_accepted": false
       }
     }
   ]

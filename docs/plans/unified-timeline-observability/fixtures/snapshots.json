@@ -1,5 +1,5 @@
 {
-  "contract_version": 4,
+  "contract_version": 5,
   "input_case": "causality.json#normal_dense",
   "phase_pairs": {
     "transport": [
@@ -728,7 +728,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -887,7 +890,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         },
         "legacy_classification": "completed",
         "phase_sample_counts": {
@@ -1076,7 +1082,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -1243,7 +1252,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         },
         "legacy_classification": "incomplete"
       }
@@ -1425,7 +1437,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -1653,7 +1668,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -1821,7 +1839,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -2046,7 +2067,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -2247,7 +2271,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -2294,7 +2321,7 @@
       "expected": {
         "legacy_records": [],
         "evidence_report": {
-          "contract_version": 4,
+          "contract_version": 5,
           "run_id": "11111111-1111-4111-8111-111111111111",
           "producer_id": 3,
           "observer": "transport",
@@ -2324,7 +2351,10 @@
               "quality": [
                 "operation_unobserved"
               ],
-              "sources": []
+              "sources": [],
+              "invalid_fields": [],
+              "raw_request": null,
+              "terminal_boundaries": []
             }
           ]
         }
@@ -2411,7 +2441,7 @@
           }
         ],
         "evidence_report": {
-          "contract_version": 4,
+          "contract_version": 5,
           "run_id": "11111111-1111-4111-8111-111111111111",
           "producer_id": 5,
           "observer": "fabric",
@@ -2588,7 +2618,10 @@
                   },
                   "metadata": null
                 }
-              ]
+              ],
+              "invalid_fields": [],
+              "raw_request": null,
+              "terminal_boundaries": []
             },
             {
               "local_trace_id": 2,
@@ -2604,7 +2637,10 @@
               "quality": [
                 "operation_unobserved"
               ],
-              "sources": []
+              "sources": [],
+              "invalid_fields": [],
+              "raw_request": null,
+              "terminal_boundaries": []
             }
           ]
         }
@@ -2657,7 +2693,7 @@
         ],
         "legacy_snapshot_available": false,
         "evidence_report": {
-          "contract_version": 4,
+          "contract_version": 5,
           "run_id": "11111111-1111-4111-8111-111111111111",
           "producer_id": 3,
           "observer": "transport",
@@ -2808,7 +2844,10 @@
                   },
                   "metadata": null
                 }
-              ]
+              ],
+              "invalid_fields": [],
+              "raw_request": null,
+              "terminal_boundaries": []
             }
           ]
         }
@@ -3000,7 +3039,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         },
         "field_loss_reason": null
       }
@@ -3296,7 +3338,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       }
     },
@@ -3357,11 +3402,3502 @@
         "error": "invalid_event",
         "legacy_snapshot_available": false
       }
+    },
+    {
+      "id": "anomaly_forward_mode",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        },
+        "legacy_snapshot": {
+          "pid": 102,
+          "site": "atnagent",
+          "model_id": "test/test-model",
+          "rank": 0,
+          "arena_handle_suffix": "0123456789abcdef",
+          "sequence": 1,
+          "dropped": 0,
+          "phase_summary": {},
+          "record_counts": {
+            "retained": 0,
+            "completed": 0,
+            "closed": 0,
+            "incomplete": 0
+          },
+          "records": []
+        },
+        "evidence_report": {
+          "contract_version": 5,
+          "run_id": "11111111-1111-4111-8111-111111111111",
+          "producer_id": 2,
+          "observer": "transport",
+          "generation": 1,
+          "endpoint": {
+            "owner": 2,
+            "sequence": 1
+          },
+          "site": "atnagent",
+          "snapshot_sha256": null,
+          "capacity": 8192,
+          "sequence": 1,
+          "dropped": 0,
+          "unobserved_operations": 0,
+          "entries": [
+            {
+              "local_trace_id": 1,
+              "role": "atnagent",
+              "operation": {
+                "endpoint_owner": 2,
+                "endpoint_sequence": 1,
+                "operation_sequence": 1
+              },
+              "invocation": null,
+              "projection_status": "omitted",
+              "evidence_status": "partial",
+              "unknown_fields": [
+                "execution_completed",
+                "execution_started"
+              ],
+              "not_applicable_fields": [
+                "closed",
+                "output_copied",
+                "request_published",
+                "request_staging_completed",
+                "request_staging_started",
+                "result_acknowledged",
+                "result_observed"
+              ],
+              "missing_boundaries": [],
+              "unknown_applicability": [
+                "ExecutionCompleted",
+                "ExecutionStarted"
+              ],
+              "quality": [
+                "applicability_unknown",
+                "invalid_request"
+              ],
+              "sources": [
+                {
+                  "field": "dp_row_layout",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "forward_mode",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "layer_ordinal",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "output_requirement",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "payload_rows",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "request_observed",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "result_code",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 2
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "result_published",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 2
+                  },
+                  "metadata": null
+                },
+                {
+                  "field": "trace_id",
+                  "event": {
+                    "producer": 2,
+                    "event_sequence": 1
+                  },
+                  "metadata": null
+                }
+              ],
+              "invalid_fields": [
+                "forward_mode"
+              ],
+              "raw_request": {
+                "layer_ordinal": 0,
+                "payload_rows": 2,
+                "forward_mode": 99,
+                "output_requirement": 1,
+                "dp_row_layout": 0
+              },
+              "terminal_boundaries": [
+                {
+                  "boundary": "ResultPublished",
+                  "raw_time_ns": 180,
+                  "result_code": 2
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_output_requirement",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 425201762306,
+              "data2": 8589934592,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 425201762306,
+              "data2": 8589934592,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "output_requirement"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 2,
+            "output_requirement": 99,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_dp_row_layout",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967298,
+              "data2": 17179869283,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967298,
+              "data2": 17179869283,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "dp_row_layout"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 2,
+            "output_requirement": 1,
+            "dp_row_layout": 99
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_combined",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 18446744073709551615,
+              "data2": 34359738367,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 18446744073709551615,
+              "data2": 34359738367,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "dp_row_layout",
+            "forward_mode",
+            "output_requirement"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 4294967295,
+            "output_requirement": 4294967295,
+            "dp_row_layout": 4294967295
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_shutdown",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 1,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_zero_timestamp",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 0,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request",
+            "legacy_zero_timestamp"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_opening_only",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started",
+            "result_code",
+            "result_published"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [
+            "ExecutionCompleted",
+            "ExecutionStarted",
+            "ResultPublished"
+          ],
+          "unknown_applicability": [],
+          "quality": [
+            "event_missing",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": []
+        }
+      }
+    },
+    {
+      "id": "anomaly_terminal_only",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started",
+            "request_observed"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [
+            "RequestObserved"
+          ],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "event_missing",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_all_events_lost",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "site": "atnagent",
+          "endpoint_owner": 2,
+          "endpoint_sequence": 1,
+          "generation": 1,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 1,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": null,
+          "invocation": null,
+          "projection_status": "unobserved",
+          "evidence_status": "unavailable",
+          "unknown_fields": [],
+          "not_applicable_fields": [],
+          "missing_boundaries": [],
+          "unknown_applicability": [],
+          "quality": [
+            "operation_unobserved"
+          ],
+          "sources": [],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
+        },
+        "anomalous_operation_count": null
+      }
+    },
+    {
+      "id": "anomaly_duplicate_opening",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 3,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "atnagent",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "execution_completed",
+            "execution_started"
+          ],
+          "not_applicable_fields": [
+            "closed",
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_acknowledged",
+            "result_observed"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "ExecutionCompleted",
+            "ExecutionStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "request_observed",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_published",
+              "event": {
+                "producer": 2,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 2,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultPublished",
+              "raw_time_ns": 180,
+              "result_code": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_conflicting_request",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 3,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967394,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "error": "identity_conflict"
+      }
+    },
+    {
+      "id": "anomaly_conflicting_boundary",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 3,
+              "raw_time_ns": 131,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "error": "event_conflict"
+      }
+    },
+    {
+      "id": "anomaly_conflicting_event_identity",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 131,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "error": "event_conflict"
+      }
+    },
+    {
+      "id": "anomaly_conflicting_result",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 3,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 1,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "error": "identity_conflict"
+      }
+    },
+    {
+      "id": "anomaly_ordinary_anomaly_conflict",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 327943,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 103,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 106,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 3,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 103,
+              "presence": 67335,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 2,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "error": "identity_conflict"
+      }
+    },
+    {
+      "id": "legal_enum_geometry_rejection",
+      "input": {
+        "metadata": "metadata-atnagent.json",
+        "events": [
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 130,
+              "clock_domain_id": 3,
+              "kind": 103,
+              "presence": 67335,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          },
+          {
+            "producer": 2,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 180,
+              "clock_domain_id": 3,
+              "kind": 106,
+              "presence": 100103,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 2,
+              "role": 2,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 2,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "projection_status": "retained",
+        "evidence_status": "partial",
+        "invalid_fields": [],
+        "raw_request": null,
+        "terminal_boundaries": [],
+        "result_code": "protocol_mismatch",
+        "invalid_request": false
+      }
+    },
+    {
+      "id": "anomaly_instance_closed_shutdown_zero",
+      "input": {
+        "metadata": "metadata.json",
+        "events": [
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 0,
+              "clock_domain_id": 2,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 1,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 110,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 3,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "instance",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started",
+            "result_observed"
+          ],
+          "not_applicable_fields": [
+            "execution_completed",
+            "execution_started",
+            "request_observed",
+            "result_acknowledged",
+            "result_published"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "OutputCopied",
+            "RequestPublished",
+            "RequestStagingCompleted",
+            "RequestStagingStarted",
+            "ResultObserved"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request",
+            "legacy_zero_timestamp"
+          ],
+          "sources": [
+            {
+              "field": "boundary.ResultAcknowledged",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "closed",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "Closed",
+              "raw_time_ns": 0,
+              "result_code": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "anomaly_instance_closed_keeps_observed_result",
+      "input": {
+        "metadata": "metadata.json",
+        "events": [
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 1,
+              "raw_time_ns": 310,
+              "clock_domain_id": 2,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 107,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          },
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 2,
+              "raw_time_ns": 320,
+              "clock_domain_id": 2,
+              "kind": 150,
+              "presence": 360711,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 0,
+              "graph_template": 0,
+              "graph_execution": 0,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "local_trace_id": 1,
+              "layer_ordinal": 0,
+              "payload_rows": 0,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 0,
+              "output_requirement": 0,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 110,
+              "data1": 4294967395,
+              "data2": 4294967296,
+              "data3": 0,
+              "data4": 2
+            }
+          }
+        ],
+        "select": {
+          "observer": "transport",
+          "producer": 3,
+          "local_trace_id": 1
+        },
+        "operation_counts": {
+          "sequence": 1,
+          "capacity": 8192
+        }
+      },
+      "expected": {
+        "legacy_record": null,
+        "unobserved_operations": 0,
+        "evidence_entry": {
+          "local_trace_id": 1,
+          "role": "instance",
+          "operation": {
+            "endpoint_owner": 2,
+            "endpoint_sequence": 1,
+            "operation_sequence": 1
+          },
+          "invocation": null,
+          "projection_status": "omitted",
+          "evidence_status": "partial",
+          "unknown_fields": [
+            "output_copied",
+            "request_published",
+            "request_staging_completed",
+            "request_staging_started"
+          ],
+          "not_applicable_fields": [
+            "execution_completed",
+            "execution_started",
+            "request_observed",
+            "result_acknowledged",
+            "result_published"
+          ],
+          "missing_boundaries": [],
+          "unknown_applicability": [
+            "OutputCopied",
+            "RequestPublished",
+            "RequestStagingCompleted",
+            "RequestStagingStarted"
+          ],
+          "quality": [
+            "applicability_unknown",
+            "invalid_request"
+          ],
+          "sources": [
+            {
+              "field": "boundary.ResultAcknowledged",
+              "event": {
+                "producer": 3,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "closed",
+              "event": {
+                "producer": 3,
+                "event_sequence": 2
+              },
+              "metadata": null
+            },
+            {
+              "field": "dp_row_layout",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "forward_mode",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "layer_ordinal",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "output_requirement",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "payload_rows",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_code",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "result_observed",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            },
+            {
+              "field": "trace_id",
+              "event": {
+                "producer": 3,
+                "event_sequence": 1
+              },
+              "metadata": null
+            }
+          ],
+          "invalid_fields": [
+            "forward_mode"
+          ],
+          "raw_request": {
+            "layer_ordinal": 0,
+            "payload_rows": 2,
+            "forward_mode": 99,
+            "output_requirement": 1,
+            "dp_row_layout": 0
+          },
+          "terminal_boundaries": [
+            {
+              "boundary": "ResultObserved",
+              "raw_time_ns": 310,
+              "result_code": 0
+            },
+            {
+              "boundary": "Closed",
+              "raw_time_ns": 320,
+              "result_code": 0
+            }
+          ]
+        }
+      }
     }
   ],
   "expected_evidence_reports": [
     {
-      "contract_version": 4,
+      "contract_version": 5,
       "run_id": "11111111-1111-4111-8111-111111111111",
       "producer_id": 3,
       "observer": "transport",
@@ -3512,12 +7048,15 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       ]
     },
     {
-      "contract_version": 4,
+      "contract_version": 5,
       "run_id": "11111111-1111-4111-8111-111111111111",
       "producer_id": 2,
       "observer": "transport",
@@ -3646,12 +7185,15 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       ]
     },
     {
-      "contract_version": 4,
+      "contract_version": 5,
       "run_id": "11111111-1111-4111-8111-111111111111",
       "producer_id": 2,
       "observer": "fabric",
@@ -3817,12 +7359,15 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       ]
     },
     {
-      "contract_version": 4,
+      "contract_version": 5,
       "run_id": "11111111-1111-4111-8111-111111111111",
       "producer_id": 5,
       "observer": "fabric",
@@ -3999,7 +7544,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         },
         {
           "local_trace_id": 2,
@@ -4178,7 +7726,10 @@
               },
               "metadata": null
             }
-          ]
+          ],
+          "invalid_fields": [],
+          "raw_request": null,
+          "terminal_boundaries": []
         }
       ]
     }

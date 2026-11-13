@@ -125,19 +125,20 @@ stop reason. Completion uncertainty independently requires resource retention,
 an unknown tail, and non-exact totals; see [quality and transfer failures](
 shared-contract.md#quality-attachments-and-configuration).
 
-## Required Contract Extension
+## Anomalous Transport Events
 
-[Anomalous Transport evidence](shared-contract.md#required-extension-anomalous-transport-evidence)
+[Anomalous Transport evidence](shared-contract.md#anomalous-transport-evidence)
 must preserve received invalid request fields and actual local terminal
 boundaries through an explicit anomaly representation. Legacy projection
 omission must retain evidence of the anomaly and known terminal facts, with
 unknown and inapplicable facts distinguished. Collection remains bounded,
 and retained terminal evidence does not reconstruct missing earlier times.
 
-These are requirements for a coordinated extension, not a new interpretation
-of v4. Freeze encoding, report schema, version compatibility and reference
-fixtures jointly before runtime emission. This constraints-only change leaves
-the existing v4 encoding, fixtures and runtime interfaces unchanged.
+Version 5 defines TransportAnomaly (kind 150), its RawRequest payload and
+the anomaly fields of SnapshotEvidenceReport. Invalid enums omit the typed
+legacy Record with invalid_request while retaining observed evidence; missing
+required scalars independently use legacy_fact_missing. Ordinary Event enum
+validation and the existing Native getter and legacy JSON shapes are preserved.
 
 ## Implementation and Validation
 
@@ -150,16 +151,16 @@ Both Native and offline implementations must independently read and write the
 valid binary vector, reject the invalid vectors by structured code, reconstruct
 the same legacy projections, and produce the exact calibration expectations.
 Fixture changes require a coordinated contract version update; never support
-two conflicting interpretations of v4.
+two conflicting interpretations of v5.
 
-Contract and fixture version 4 supersedes versions 1, 2, and 3 without a
+Contract and fixture version 5 supersedes versions 1 through 4 without a
 compatibility mode. Update raw vectors, metadata hashes and fixture checksums together.
 The Event record remains 256 bytes and calibration mathematics is unchanged.
-Version 4 adds explicit Generation-scoped Fabric membership and the observed
-process boundary, and corrects Coordinator fixture ownership. It retains
-per-snapshot evidence reports and field availability. The ordinary Dense
-DirectPartial fixture excludes partial-publication and peer-wait
-Hooks, matching the actual production branch.
+Version 5 standardizes anomalous Transport request evidence and its projection
+report. It retains Generation-scoped Fabric membership, the observed process
+boundary, per-snapshot field availability and the actual Coordinator owner.
+The ordinary Dense DirectPartial fixture excludes partial-publication and
+peer-wait Hooks, matching the actual production branch.
 
 Focused tests must cover independent-observer IPC allocation and policy mismatch,
 Generation-scoped PE reassignment, Host/Device member ownership, malformed and

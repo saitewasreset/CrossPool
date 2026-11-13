@@ -1,5 +1,5 @@
 {
-  "contract_version": 4,
+  "contract_version": 5,
   "case_identity_notation": {
     "operation": [
       "endpoint_owner",

@@ -1,14 +1,15 @@
-# Shared Observability Contract v4
+# Shared Observability Contract v5
 
-This is the target contract linked from the [task plan](README.md). Version 4
-supersedes versions 1, 2, and 3 as one coordinated specification/fixture revision.
-Readers and participants accept only version 4; no compatibility interpretation is
-provided. This revision defines Generation-scoped Producer-to-PE membership,
-limits Producer registration to observed runtime processes, and places Coordinator
-evidence in its actual FfnAgent process. Field availability, per-snapshot evidence
-reports, and path-dependent completeness remain explicit. The 256-byte Event
-layout, IPC field layout, and calibration mathematics are unchanged; versioned
-artifacts and IPC descriptors use version 4.
+This is the target contract linked from the [task plan](README.md). Version 5
+supersedes versions 1 through 4 as one coordinated specification/fixture revision.
+Readers and participants accept only version 5; no compatibility interpretation is
+provided. This revision defines anomalous Transport Events and their snapshot
+evidence while preserving Generation-scoped Producer-to-PE membership and the
+observed-process boundary. Field availability, per-snapshot evidence reports,
+and path-dependent completeness remain explicit. The 256-byte Event field
+offsets, IPC field layout, and calibration mathematics are unchanged; versioned
+metadata, raw chunks, quality checkpoints, evidence reports and IPC descriptors
+use version 5. Native ABI versions remain independently managed.
 All integers on disk are little-endian except opaque UUID bytes. Native struct padding,
 `size_t`, pointers, CUDA handles, and enum ordinals inferred from C++ layout are
 never wire representations. Fixture JSON uses exact integer tokens; consumers
@@ -16,21 +17,21 @@ must not round them through IEEE-754 doubles.
 
 ## Identity and Metadata
 
-| Identity | Type and scope | Allocation and isolation |
-| --- | --- | --- |
-| Run | 16-byte UUID | New launch Attempt; never PID or wall time alone |
-| Process creation | 16-byte UUID | New OS process creation, even after PID reuse |
-| Producer | Positive u64 within Run | Launcher registers one Host source per observed Instance Rank, AtnAgent, or FfnAgent process, and one Device source per such process/Device; retries never reuse IDs |
-| Generation | Positive u64 metadata reference within Run | Resolves to the exact production FabricGenerationId string |
-| Endpoint | `(owner_producer, endpoint_sequence)` | `owner_producer` is the AtnAgent process's Device Producer; the AtnAgent Device source allocates a positive sequence for each new IPC observation region. One region is exported per Transport Arena pairing, matching the existing one-Arena-per-Instance-rank export granularity; it is never shared across TP/DP ranks |
-| Operation | `(Run, Endpoint, operation_sequence)` | Positive Device counter after successful Mailbox Claim; independent of event reservations |
-| Graph template | `(Run, graph_owner, template_sequence)` | Host source registers a fresh template when capturing/installing; actual CUDA handles are not identity |
-| Graph execution | `(Run, graph_owner, execution_sequence)` | Fresh positive sequence per actual invocation of the execution path; Eager has no template |
-| Invocation | `(Run, Generation, instance_index, invocation_sequence)` | Uses production InvocationKey; index may be zero, sequence is positive |
-| Lane/Lease | `(Run, Generation, lane_index, lease_sequence)` | Uses production assignment; Lane zero is valid, lease is positive |
-| Routing attachment | `(Run, attachment_owner, attachment_sequence)` | Device publication allocates sequence independently of event/tensor capacity |
-| Clock domain | Positive u64 within Run | Host CLOCK_MONOTONIC reference; Device domain additionally names process, physical UUID, and raw-clock Epoch |
-| Event | `(Run, Producer, event_sequence)` | Positive attempted-event counter; never a buffer slot or operation sequence |
+| Identity           | Type and scope                                           | Allocation and isolation                                                                                                                                                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run                | 16-byte UUID                                             | New launch Attempt; never PID or wall time alone                                                                                                                                                                                                                                                                          |
+| Process creation   | 16-byte UUID                                             | New OS process creation, even after PID reuse                                                                                                                                                                                                                                                                             |
+| Producer           | Positive u64 within Run                                  | Launcher registers one Host source per observed Instance Rank, AtnAgent, or FfnAgent process, and one Device source per such process/Device; retries never reuse IDs                                                                                                                                                      |
+| Generation         | Positive u64 metadata reference within Run               | Resolves to the exact production FabricGenerationId string                                                                                                                                                                                                                                                                |
+| Endpoint           | `(owner_producer, endpoint_sequence)`                    | `owner_producer` is the AtnAgent process's Device Producer; the AtnAgent Device source allocates a positive sequence for each new IPC observation region. One region is exported per Transport Arena pairing, matching the existing one-Arena-per-Instance-rank export granularity; it is never shared across TP/DP ranks |
+| Operation          | `(Run, Endpoint, operation_sequence)`                    | Positive Device counter after successful Mailbox Claim; independent of event reservations                                                                                                                                                                                                                                 |
+| Graph template     | `(Run, graph_owner, template_sequence)`                  | Host source registers a fresh template when capturing/installing; actual CUDA handles are not identity                                                                                                                                                                                                                    |
+| Graph execution    | `(Run, graph_owner, execution_sequence)`                 | Fresh positive sequence per actual invocation of the execution path; Eager has no template                                                                                                                                                                                                                                |
+| Invocation         | `(Run, Generation, instance_index, invocation_sequence)` | Uses production InvocationKey; index may be zero, sequence is positive                                                                                                                                                                                                                                                    |
+| Lane/Lease         | `(Run, Generation, lane_index, lease_sequence)`          | Uses production assignment; Lane zero is valid, lease is positive                                                                                                                                                                                                                                                         |
+| Routing attachment | `(Run, attachment_owner, attachment_sequence)`           | Device publication allocates sequence independently of event/tensor capacity                                                                                                                                                                                                                                              |
+| Clock domain       | Positive u64 within Run                                  | Host CLOCK_MONOTONIC reference; Device domain additionally names process, physical UUID, and raw-clock Epoch                                                                                                                                                                                                              |
+| Event              | `(Run, Producer, event_sequence)`                        | Positive attempted-event counter; never a buffer slot or operation sequence                                                                                                                                                                                                                                               |
 
 Producer IDs and metadata references are registered before Capture and copied
 as immutable observation configuration. Endpoint sequences are not local arena
@@ -52,7 +53,7 @@ require a separately specified contract extension.
 
 The launcher distributes one Run and the registered Producer/Generation/clock
 IDs through the existing preparation/bootstrap path. IPC exports add optional
-`observation_region` with exactly version:u32=4, owner_producer:u64,
+`observation_region` with exactly version:u32=5, owner_producer:u64,
 endpoint_sequence:u64, generation:u64, allocation_bytes:u64, and handle.
 Handle uses the existing canonical hexadecimal CUDA IPC handle representation;
 it is never persisted in raw timeline metadata. Disabled related observation
@@ -158,14 +159,14 @@ owned by the Graph Observer, sized once per `graph_owner`, independent of how
 many Endpoints that process currently has open. Its recommended default
 layout:
 
-| Offset | Field | Type | Purpose |
-| --- | --- | --- | --- |
-| 0 | `slot_generation` | u64 | Incremented on every reuse; the generation a reader must match |
-| 8 | `execution_sequence` | u64 | Owning Graph execution identity |
-| 16 | `template_sequence` | u64 | Zero for Eager |
-| 24 | `stream_ordinal` | u64 | Process-local monotonic registration ID of the owning Stream; never a raw `CUstream` handle |
-| 32 | `state` | u32 | `Free=0`, `Reserved=1`, `Committed=2` |
-| 36 | (padding) | u32 | Zero |
+| Offset | Field                | Type | Purpose                                                                                     |
+| ------ | -------------------- | ---- | ------------------------------------------------------------------------------------------- |
+| 0      | `slot_generation`    | u64  | Incremented on every reuse; the generation a reader must match                              |
+| 8      | `execution_sequence` | u64  | Owning Graph execution identity                                                             |
+| 16     | `template_sequence`  | u64  | Zero for Eager                                                                              |
+| 24     | `stream_ordinal`     | u64  | Process-local monotonic registration ID of the owning Stream; never a raw `CUstream` handle |
+| 32     | `state`              | u32  | `Free=0`, `Reserved=1`, `Committed=2`                                                       |
+| 36     | (padding)            | u32  | Zero                                                                                        |
 
 Slot size is 40 bytes. Default capacity (`context_slot_capacity`) is **64**
 per process, sized for the worst-case concurrent-Stream count across all
@@ -190,9 +191,9 @@ Transport Endpoint). Sampler storage is therefore a separate, non-IPC,
 per-process Device allocation, parallel to `observation_region` rather than
 inside it:
 
-| Field | Type | Purpose |
-| --- | --- | --- |
-| `raw_g_ns` | u64 | Written by the short sampling Kernel on the dedicated Stream; read back by the Host via `cudaMemcpyAsync` after completion confirmation |
+| Field      | Type | Purpose                                                                                                                                 |
+| ---------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `raw_g_ns` | u64  | Written by the short sampling Kernel on the dedicated Stream; read back by the Host via `cudaMemcpyAsync` after completion confirmation |
 
 Default `sampler_slot_capacity` is **1** per process (one clock domain per
 Device Producer in the common case), configurable up to a small bound for a
@@ -347,19 +348,20 @@ metadata, not missing normal evidence.
 These IDs are stable wire values. Hook enum values are mapped explicitly.
 The name arrays in [the layout fixture](fixtures/layout.json) are normative.
 
-| IDs | Source and ordered names | Meaning |
-| --- | --- | --- |
-| 100–110 | Transport: RequestStagingStarted, RequestStagingCompleted, RequestPublished, RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished, ResultObserved, OutputCopied, ResultAcknowledged, Closed | Existing `TransportProtocolEventKind` boundaries, unchanged |
-| 200–205 | AtnAgent Fabric: SubmissionPrepared, SubmissionPublished, AdmissionObserved, InputReadyPublished, OutputCommitObserved, OutputAcknowledgementPublished | Local preparation/publication/observation, not a remote acknowledgement inferred from time |
-| 300–307 | Coordinator: Enqueued, Scheduled, AdmissionPublished, LaneExecutionPublished, FfnAgentCompletionsObserved, OutputCommitPublished, OutputAcknowledgementsObserved, LaneReleased | Existing aggregate conditions; they do not contain individual participant observation times |
-| 400–408 | FfnAgent: LaneExecutionObserved, InputReadyObserved, RoutingMetadataPublished, RoutingMetadataObserved, ComputeStarted, ComputeCompleted, PartialReadyPublished, PeerPartialsReadyObserved, CompletionPublished | Observed protocol and compute facts of this PE |
-| 450 | TransportFabricAssociated | Actual entry into Submission preparation with the real key; does not imply SubmissionPublished |
-| 500–503 | GraphCaptureBegin, GraphCaptureEnd, GraphCaptureError, GraphTemplateInstalled | Template lifecycle; Capture is construction activity |
-| 504–506 | GraphHostCallBegin, GraphHostCallEnd, GraphHostCallError | Host call boundaries; return does not prove Device completion |
-| 507–508 | GraphDeviceActivityBegin, GraphDeviceActivityEnd | Device record points installed in the actual execution path; only the measured activity is enclosed |
-| 509–512 | GraphTemplateRetired, GraphInstallBegin, GraphInstallEnd, GraphInstallError | Installation and retirement lifecycle |
-| 550 | RoutingPublished | Same real RoutingMetadataPublished boundary, enriched with attachment identity |
-| 600–601 | CalibrationSampleSucceeded, CalibrationSampleFailed | Host-published asynchronous sampling outcome, not production-stream synchronization |
+| IDs     | Source and ordered names                                                                                                                                                                                        | Meaning                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 100–110 | Transport: RequestStagingStarted, RequestStagingCompleted, RequestPublished, RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished, ResultObserved, OutputCopied, ResultAcknowledged, Closed   | Existing `TransportProtocolEventKind` boundaries, unchanged                                          |
+| 150     | TransportAnomaly                                                                                                                                                                                                | One actual Transport boundary with raw invalid request enums; data0 identifies the original boundary |
+| 200–205 | AtnAgent Fabric: SubmissionPrepared, SubmissionPublished, AdmissionObserved, InputReadyPublished, OutputCommitObserved, OutputAcknowledgementPublished                                                          | Local preparation/publication/observation, not a remote acknowledgement inferred from time           |
+| 300–307 | Coordinator: Enqueued, Scheduled, AdmissionPublished, LaneExecutionPublished, FfnAgentCompletionsObserved, OutputCommitPublished, OutputAcknowledgementsObserved, LaneReleased                                  | Existing aggregate conditions; they do not contain individual participant observation times          |
+| 400–408 | FfnAgent: LaneExecutionObserved, InputReadyObserved, RoutingMetadataPublished, RoutingMetadataObserved, ComputeStarted, ComputeCompleted, PartialReadyPublished, PeerPartialsReadyObserved, CompletionPublished | Observed protocol and compute facts of this PE                                                       |
+| 450     | TransportFabricAssociated                                                                                                                                                                                       | Actual entry into Submission preparation with the real key; does not imply SubmissionPublished       |
+| 500–503 | GraphCaptureBegin, GraphCaptureEnd, GraphCaptureError, GraphTemplateInstalled                                                                                                                                   | Template lifecycle; Capture is construction activity                                                 |
+| 504–506 | GraphHostCallBegin, GraphHostCallEnd, GraphHostCallError                                                                                                                                                        | Host call boundaries; return does not prove Device completion                                        |
+| 507–508 | GraphDeviceActivityBegin, GraphDeviceActivityEnd                                                                                                                                                                | Device record points installed in the actual execution path; only the measured activity is enclosed  |
+| 509–512 | GraphTemplateRetired, GraphInstallBegin, GraphInstallEnd, GraphInstallError                                                                                                                                     | Installation and retirement lifecycle                                                                |
+| 550     | RoutingPublished                                                                                                                                                                                                | Same real RoutingMetadataPublished boundary, enriched with attachment identity                       |
+| 600–601 | CalibrationSampleSucceeded, CalibrationSampleFailed                                                                                                                                                             | Host-published asynchronous sampling outcome, not production-stream synchronization                  |
 
 Transport events retain their site. Before Fabric entry, rejection, shutdown, or
 timeout can produce a Transport terminal event without an association. Missing
@@ -421,13 +423,41 @@ This storage is process-wide per `graph_owner`, not per `observation_region`;
 see "Dynamic Context storage: process-wide, not per-Endpoint" above for its
 default layout and capacity.
 
-## Required Extension: Anomalous Transport Evidence
+## Anomalous Transport Evidence
 
-This section constrains a coordinated contract extension. It does not assign
-new wire values, change version 4, or relax the ordinary Event validation
-rules below. Runtime emission and reader support depend on a jointly frozen
-encoding, report schema, version policy, and reference fixtures. The existing
-v4 vocabulary and fixtures remain authoritative for v4 data.
+TransportAnomaly is the required representation for an actual Transport Hook
+whose received request contains an invalid forward mode, output requirement,
+or DP row layout. Ordinary Events retain strict enum validation.
+
+### Payload and intrinsic validation
+
+Kind **150**, `TransportAnomaly`, uses presence bit **18**, `RawRequest`.
+Its required presence mask is `0x50107`: Generation, Endpoint, Operation,
+local trace ID, Instance Rank and RawRequest. Only Result bit 15 may be added.
+Ordinary request/invocation bits 9/10 and their fields are absent and zero.
+RawRequest is forbidden on every other kind. Unlisted presence bits are zero.
+
+| Offset | Word      | Meaning                                                  |
+| ------ | --------- | -------------------------------------------------------- |
+| 216    | data0:u64 | Original Transport boundary number, 100 through 110      |
+| 224    | data1:u64 | Forward mode in low u32; output requirement in high u32  |
+| 232    | data2:u64 | DP row layout in low u32; invalid-field mask in high u32 |
+| 240    | data3:u64 | Received layer ordinal                                   |
+| 248    | data4:u64 | Received physical payload rows                           |
+
+The invalid-field mask is nonzero and equals exactly the invalid enum fields:
+bit 0 for forward mode outside `{1,2,4}`, bit 1 for output requirement outside
+`{1,2}`, and bit 2 for DP row layout outside `{0,1,2}`. Higher mask bits are zero.
+Each raw enum preserves its exact received u32 bit pattern. data0 is a boundary
+identifier, not a second Event kind or a replacement timestamp.
+
+Role Instance (1) permits original boundaries 100–102 and 107–110;
+AtnAgent (2) permits 103–106. Result is absent before boundary 106 and present
+at boundaries 106–110, with the actual local result code 0–3. Instance Closed
+repeats its previously observed effective result when known; otherwise it
+records the actual close result. The Event raw_time_ns is the original
+boundary timestamp, including zero. Illegal masks, presence, site/boundary
+combinations or result presence fail with `invalid_event`.
 
 ### Scope and required facts
 
@@ -435,9 +465,9 @@ AtnAgent observes a Published request before validating its RequestMetadata.
 An unknown forward mode, output requirement, or DP row layout can therefore
 reach RequestObserved and a later ResultPublished boundary. Requiring legal
 request enums on every ordinary Transport Event leaves these observed facts
-unrepresentable in v4, including a separately valid terminal result.
+unrepresentable as ordinary Events, including a separately valid terminal result.
 
-The extension must preserve the invalid request fields and each actual local
+Anomalous Transport Events preserve the invalid request fields and each actual local
 terminal boundary. An invalid enum alone must not cause intentional Event
 discard, replacement with a legal default, or classification solely as an
 unobserved operation. Production validation, result selection, and Hook
@@ -471,11 +501,13 @@ timestamp of another boundary. A retained opening Event alone does not prove
 that a result was published, execution started, or the operation terminated.
 An actual local result does not prove peer observation or acknowledgement.
 
-The selected representation must distinguish different original boundaries
-when detecting semantic duplicates. Existing Event identity conflicts and
+Semantic duplicate detection uses the observer domain, local trace ID and
+original boundary, rather than kind 150 alone. Ordinary/anomalous request
+representations for the same operation conflict; repeated request and result
+facts must agree. Existing Event identity conflicts and
 conflicting repeated operation facts remain explicit errors; two anomaly
 Events for different boundaries are not duplicates merely because they share
-one dedicated kind. The extension does not make malformed observation
+one dedicated kind. This representation does not make malformed observation
 artifacts valid or authorize bypassing strict enum checks on ordinary Events.
 
 ### Bounded collection and evidence reports
@@ -498,7 +530,7 @@ evidence cannot prove absence of anomalies.
 
 Preserve the legacy Native getter and JSON shapes for representable Records.
 Omit an unrepresentable Record while retaining its anomaly evidence. The
-extended same-cutoff SnapshotEvidenceReport must distinguish:
+same-cutoff SnapshotEvidenceReport distinguishes:
 
 - An observed invalid field, an unknown field, and an inapplicable field.
 - An observed anomalous operation omitted from the legacy projection, and an
@@ -511,25 +543,16 @@ evidence, and expose any actually retained local terminal facts. Such an
 operation is not unobserved and does not contribute to unobserved_operations.
 Do not hide known invalid values solely behind unknown_fields or
 legacy_fact_missing, or infer full-path completeness from a terminal Event.
-All new report fields, reason names, and applicability rules require the same
-coordinated schema revision as the anomaly encoding; this section does not
-add them to the closed v4 report. Hash pairing, bounded report storage and the
-original snapshot-read synchronization preconditions continue to apply.
+The report uses invalid_fields, raw_request, terminal_boundaries and
+invalid_request as specified below. Hash pairing, bounded report storage and
+the original snapshot-read synchronization preconditions continue to apply.
 
-### Coordinated freeze and acceptance
+### Acceptance
 
-Before implementations emit the extension, jointly freeze its Event kind and
-payload, presence and intrinsic validation rules, report schema, and explicit
-contract version. Define participant version admission and supported reader
-versions, including rejection of unsupported combinations. New evidence must
-not masquerade as ordinary v4 Events, use currently reserved words without a
-versioned definition, or depend on old readers silently skipping it.
-
-Update versioned reference bytes, semantic expectations and checksums together
-in that encoding revision. Native collection/reconstruction and offline
-parsing/reconstruction must independently agree on the same fixed examples.
-This constraints-only extension leaves the current encoding, Native interface
-declarations, public error enums, and fixture files unchanged.
+Native collection/reconstruction and offline parsing/reconstruction must
+independently agree on the versioned reference bytes and semantic expectations.
+Unsupported participant or reader versions are rejected; unknown kinds are
+errors rather than silently skipped records.
 
 Acceptance examples must cover each invalid enum and combinations, legal-enum
 geometry rejection, opening-only, terminal-only and complete Event loss,
@@ -547,44 +570,47 @@ Every record is 256 bytes. The Producer and Run are supplied by the chunk.
 All unlisted presence bits and all absent fields are zero. Zero is a valid
 timestamp; only legacy projections use zero as their missing-time sentinel.
 
-| Offset | Field | Type |
-| --- | --- | --- |
-| 0, 8, 16 | event_sequence, raw_time_ns, clock_domain_id | u64 each |
-| 24, 28 | kind, presence | u32 each |
-| 32 | generation | u64 |
-| 40, 48, 56 | endpoint_owner, endpoint_sequence, operation_sequence | u64 each |
-| 64, 72, 80 | graph_owner, graph_template, graph_execution | u64 each |
-| 88, 96 | instance_index, invocation_sequence | u64 each |
-| 104, 112 | lane_index, lease_sequence | u64 each |
-| 120, 128 | attachment_owner, attachment_sequence | u64 each |
-| 136 | local_trace_id | u64 |
-| 144, 152, 160, 168, 176 | layer_ordinal, payload_rows, dp_rank_payload_rows, payload_row_capacity, ready_ticket | u64 each |
-| 184, 188, 192, 196, 200 | forward_mode, output_requirement, dp_row_layout, delivery, result_code | u32 each |
-| 204, 208, 212 | role, instance_rank, pe | u32, u32, i32 |
-| 216, 224, 232, 240, 248 | data0, data1, data2, data3, data4 | u64 each |
+| Offset                  | Field                                                                                 | Type          |
+| ----------------------- | ------------------------------------------------------------------------------------- | ------------- |
+| 0, 8, 16                | event_sequence, raw_time_ns, clock_domain_id                                          | u64 each      |
+| 24, 28                  | kind, presence                                                                        | u32 each      |
+| 32                      | generation                                                                            | u64           |
+| 40, 48, 56              | endpoint_owner, endpoint_sequence, operation_sequence                                 | u64 each      |
+| 64, 72, 80              | graph_owner, graph_template, graph_execution                                          | u64 each      |
+| 88, 96                  | instance_index, invocation_sequence                                                   | u64 each      |
+| 104, 112                | lane_index, lease_sequence                                                            | u64 each      |
+| 120, 128                | attachment_owner, attachment_sequence                                                 | u64 each      |
+| 136                     | local_trace_id                                                                        | u64           |
+| 144, 152, 160, 168, 176 | layer_ordinal, payload_rows, dp_rank_payload_rows, payload_row_capacity, ready_ticket | u64 each      |
+| 184, 188, 192, 196, 200 | forward_mode, output_requirement, dp_row_layout, delivery, result_code                | u32 each      |
+| 204, 208, 212           | role, instance_rank, pe                                                               | u32, u32, i32 |
+| 216, 224, 232, 240, 248 | data0, data1, data2, data3, data4                                                     | u64 each      |
 
 Presence bits group fields:
 
-| Bit | Fields made present |
-| --- | --- |
-| 0 | generation |
-| 1 | endpoint_owner, endpoint_sequence |
-| 2 | operation_sequence; requires bit 1 |
-| 3 | graph_owner, graph_template |
-| 4 | graph_owner, graph_execution |
-| 5 | instance_index, invocation_sequence; requires bit 0 |
-| 6 | lane_index, lease_sequence; requires bit 0 |
-| 7 | attachment_owner, attachment_sequence |
-| 8 | local_trace_id |
-| 9 | layer_ordinal, payload_rows, forward_mode, output_requirement, dp_row_layout |
-| 10 | layer_ordinal, payload_rows, output_requirement |
+| Bit   | Fields made present                                                                                              |
+| ----- | ---------------------------------------------------------------------------------------------------------------- |
+| 0     | generation                                                                                                       |
+| 1     | endpoint_owner, endpoint_sequence                                                                                |
+| 2     | operation_sequence; requires bit 1                                                                               |
+| 3     | graph_owner, graph_template                                                                                      |
+| 4     | graph_owner, graph_execution                                                                                     |
+| 5     | instance_index, invocation_sequence; requires bit 0                                                              |
+| 6     | lane_index, lease_sequence; requires bit 0                                                                       |
+| 7     | attachment_owner, attachment_sequence                                                                            |
+| 8     | local_trace_id                                                                                                   |
+| 9     | layer_ordinal, payload_rows, forward_mode, output_requirement, dp_row_layout                                     |
+| 10    | layer_ordinal, payload_rows, output_requirement                                                                  |
 | 11–17 | dp_rank_payload_rows, payload_row_capacity, ready_ticket, delivery, result_code, instance_rank, pe, respectively |
+| 18    | RawRequest: data0 through data4, only on TransportAnomaly                                                        |
 
 Bit 9 implies bit 10; both bits are set in the canonical request encoding.
 Bit 17 requires bit 0: PE is meaningful only in an explicit Generation.
 Shared fields such as graph_owner are absent only when every containing group
 is absent. Identity components are positive except the explicitly zero-based
 Instance/Lane/rank/PE indices. Domain references must match the Event's Producer.
+Kind-specific payload words follow the family table below: RawRequest governs
+TransportAnomaly payload only, not Graph, Routing or calibration payloads.
 
 Role is always present: `instance=1`, `atnagent=2`, `coordinator=3`,
 `ffnagent=4`, `collector=5`. Absent PE stores zero, not minus one.
@@ -593,8 +619,9 @@ PerRankComplete 1, GroupSumComplete 2; None/UniformByRank/PackedByRank 0/1/2;
 Ok/Shutdown/ProtocolMismatch/Timeout 0/1/2/3. Delivery uses
 DirectPartial/SingleComplete/ReplicatedComplete 1/2/3.
 
-Transport records require Generation, Endpoint, Operation, local trace ID,
-request facts, and Instance Rank. Fabric records require Generation,
+Ordinary Transport records require Generation, Endpoint, Operation, local trace ID,
+request facts, and Instance Rank. TransportAnomaly instead uses the RawRequest
+representation defined above. Fabric records require Generation,
 Invocation, local trace ID, invocation facts, and PE. AtnAgent records also
 carry request facts and DP rows; FfnAgent records carry Lease, row capacity,
 and delivery. Coordinator ticket is present for FIFO scheduling and absent for
@@ -611,13 +638,14 @@ the relation. RoutingPublished requires Invocation, Lease, attachment identity,
 invocation facts, and publisher PE. Identity-bearing fields must resolve to
 metadata in the referencing revision. Any not-applicable payload word is zero.
 
-| Kind family | data0…data4 interpretation |
-| --- | --- |
-| Transport, Fabric, association | All zero |
-| Graph | mode, phase, artifact_id (zero if unavailable), context_generation (zero on Host), error_code |
-| RoutingPublished | attachment_state, effective_topk, artifact_id (zero until publication), 0, 0 |
-| CalibrationSampleSucceeded | H_before, G, H_after, Device clock_domain_id, attempt_sequence |
-| CalibrationSampleFailed | H_before, 0, failure_code, Device clock_domain_id, attempt_sequence |
+| Kind family                             | data0…data4 interpretation                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Ordinary Transport, Fabric, association | All zero                                                                                          |
+| TransportAnomaly                        | original boundary, packed raw enums, packed DP layout/invalid mask, received layer, received rows |
+| Graph                                   | mode, phase, artifact_id (zero if unavailable), context_generation (zero on Host), error_code     |
+| RoutingPublished                        | attachment_state, effective_topk, artifact_id (zero until publication), 0, 0                      |
+| CalibrationSampleSucceeded              | H_before, G, H_after, Device clock_domain_id, attempt_sequence                                    |
+| CalibrationSampleFailed                 | H_before, 0, failure_code, Device clock_domain_id, attempt_sequence                               |
 
 Graph error_code: `none=0`, `capture_failed=1`, `install_failed=2`,
 `host_call_failed=3`, `context_unavailable=4`, `device_boundary_unavailable=5`.
@@ -727,17 +755,17 @@ Published path: `chunks/<producer>/<chunk_sequence>.xpool`. The header is
 At most 4095 events fit in a 1 MiB chunk. Chunks are nonempty; empty collection
 is represented by metadata/quality only. Chunk sequences start at one.
 
-| Offset | Header field | Type/value |
-| --- | --- | --- |
-| 0 | magic | Eight bytes `XPOOLC04` |
-| 8, 10, 12, 14 | version, header_bytes, event_bytes, flags | u16: 4, 128, 256, 0 |
-| 16, 24, 32, 40 | producer, chunk_sequence, metadata_revision, event_count | u64 each |
-| 48, 56 | first_event_sequence, last_event_sequence | u64, minimum/maximum |
-| 64, 72 | host_window_begin_ns, host_window_end_ns | u64 CLOCK_MONOTONIC collection window |
-| 80 | payload_bytes | u64, exactly event_count * 256 |
-| 88, 92 | payload_crc32, header_crc32 | u32 each |
-| 96 | Run UUID | 16 opaque bytes, canonical UUID byte order |
-| 112 | metadata_sha256_prefix | First 16 SHA-256 bytes |
+| Offset         | Header field                                             | Type/value                                 |
+| -------------- | -------------------------------------------------------- | ------------------------------------------ |
+| 0              | magic                                                    | Eight bytes `XPOOLC05`                     |
+| 8, 10, 12, 14  | version, header_bytes, event_bytes, flags                | u16: 5, 128, 256, 0                        |
+| 16, 24, 32, 40 | producer, chunk_sequence, metadata_revision, event_count | u64 each                                   |
+| 48, 56         | first_event_sequence, last_event_sequence                | u64, minimum/maximum                       |
+| 64, 72         | host_window_begin_ns, host_window_end_ns                 | u64 CLOCK_MONOTONIC collection window      |
+| 80             | payload_bytes                                            | u64, exactly event_count \* 256            |
+| 88, 92         | payload_crc32, header_crc32                              | u32 each                                   |
+| 96             | Run UUID                                                 | 16 opaque bytes, canonical UUID byte order |
+| 112            | metadata_sha256_prefix                                   | First 16 SHA-256 bytes                     |
 
 CRC is CRC-32/ISO-HDLC, equivalent to `zlib.crc32(bytes) & 0xffffffff`.
 Compute payload CRC over the payload. Compute header CRC over all 128 header
@@ -758,7 +786,7 @@ Strict parsing rejects the first failing stage in this order: header length;
 magic/version/layout/flags; header CRC; declared sizes and file length; metadata
 identity/hash and membership semantics; payload CRC; event widths, presence,
 enums, references, order, and membership agreement.
-Unknown event kinds fail v4; unsupported versions fail rather than falling back.
+Unknown event kinds fail v5; unsupported versions fail rather than falling back.
 Errors use codes `header_truncated`, `bad_magic`, `unsupported_version`,
 `invalid_layout`, `header_checksum`, `invalid_length`, `metadata_unavailable`,
 `metadata_checksum`, `payload_checksum`, `invalid_event`, `unknown_kind`,
@@ -858,12 +886,12 @@ host_bytes=33554432, chunk_bytes=1048576, collection_interval_ms=100,
 disk_bytes=1073741824, metadata_reserve_bytes=8388608, shutdown_wait_ms=5000,
 calibration_block_attempts=10, device_event_slot_capacity=16384,
 endpoint_capacity=8, context_slot_capacity=64, and sampler_slot_capacity=1. Enable and outdir must be set together.
-Block attempts is fixed to ten in v4. `device_event_slot_capacity`,
-`endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are
-positive. Startup evaluates the [complete Device allocation requirement](
-#device-collection-budget-composition) against `device_bytes` using the active
-configuration and actual owner layouts, then validates each remaining positive
-resource value against the minimum required allocations and chunk layout; chunk_bytes
+
+Block attempts is fixed to ten in v5. `device_event_slot_capacity`,
+`endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are positive; startup first evaluates the device
+collection budget composition formula against `device_bytes` using these
+four values, then validates each remaining positive resource value against
+the minimum required allocations and chunk layout; chunk_bytes
 cannot exceed 1 MiB and shutdown_wait_ms cannot exceed 5000. Run-wide policy
 is installed before workers start. Configuration uses the existing environment
 registration/precedence rules and rejects inconsistent participants at preparation.
@@ -902,20 +930,20 @@ IDs above N; event loss may make len(records) smaller than sequence - dropped.
 Lifetime is Endpoint for Transport and installed Producer/Generation for Fabric.
 Endpoint recreation starts a new snapshot domain; offline queries retain both.
 
-| Legacy fields | Reconstruction source |
-| --- | --- |
-| Transport trace_id, payload_rows, layer_ordinal, forward_mode, output_requirement, dp_row_layout | Event local_trace_id and repeated request facts |
-| Transport result_code | Site-local result presence; absent projects ProtocolMismatch sentinel plus unknown_result quality |
-| Transport eleven timestamp getters | Corresponding retained event; absent is zero, recorded bitmap remains authoritative |
-| Endpoint instance_index/rank | Endpoint metadata; Instance Rank repeats on events |
-| Snapshot pid/site/model_id/arena_handle_suffix | Process/Endpoint metadata; preserve exact model scalar, site, and handle suffix |
-| Fabric local_trace_id, key, layer_ordinal, payload_rows, output_requirement | Repeated local and Invocation facts |
-| AtnAgent DP rows, forward_mode, DP layout | Repeated Submission facts |
-| AtnAgent/Coordinator nullable Lane/Lease | Present only if own AdmissionObserved/Scheduled evidence or later own repeated Lease exists |
-| Coordinator ready_ticket and scheduler | Repeated FIFO ticket plus immutable scheduler policy |
-| FfnAgent Lane/Lease, payload_row_capacity, delivery | Repeated LaneExecution/selection facts |
-| Fabric role event timestamps | Corresponding retained kind; absent getters/JSON entries are zero |
-| Fabric generation/pe/counts/model_topologies | Generation metadata and its pe_members entry for the recording Producer; Event PE must agree |
+| Legacy fields                                                                                    | Reconstruction source                                                                             |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Transport trace_id, payload_rows, layer_ordinal, forward_mode, output_requirement, dp_row_layout | Event local_trace_id and repeated request facts                                                   |
+| Transport result_code                                                                            | Site-local result presence; absent projects ProtocolMismatch sentinel plus unknown_result quality |
+| Transport eleven timestamp getters                                                               | Corresponding retained event; absent is zero, recorded bitmap remains authoritative               |
+| Endpoint instance_index/rank                                                                     | Endpoint metadata; Instance Rank repeats on events                                                |
+| Snapshot pid/site/model_id/arena_handle_suffix                                                   | Process/Endpoint metadata; preserve exact model scalar, site, and handle suffix                   |
+| Fabric local_trace_id, key, layer_ordinal, payload_rows, output_requirement                      | Repeated local and Invocation facts                                                               |
+| AtnAgent DP rows, forward_mode, DP layout                                                        | Repeated Submission facts                                                                         |
+| AtnAgent/Coordinator nullable Lane/Lease                                                         | Present only if own AdmissionObserved/Scheduled evidence or later own repeated Lease exists       |
+| Coordinator ready_ticket and scheduler                                                           | Repeated FIFO ticket plus immutable scheduler policy                                              |
+| FfnAgent Lane/Lease, payload_row_capacity, delivery                                              | Repeated LaneExecution/selection facts                                                            |
+| Fabric role event timestamps                                                                     | Corresponding retained kind; absent getters/JSON entries are zero                                 |
+| Fabric generation/pe/counts/model_topologies                                                     | Generation metadata and its pe_members entry for the recording Producer; Event PE must agree      |
 
 If required scalar facts for a legacy Record are absent, retain the raw evidence
 and omit that Record with `legacy_fact_missing` quality. In particular, FIFO
@@ -949,7 +977,7 @@ Phase summary preserves the existing writer's exact indices on sorted values:
 min=0, max=n-1, median=(n-1)//2, p95=round((n-1)*0.95), and
 p99=round((n-1)*0.99), with Python ties-to-even rounding. The baseline docstring
 calls this nearest-rank, but these index rules define compatibility; do not
-substitute ceil(p*n)-1.
+substitute ceil(p\*n)-1.
 Loss never creates normal derived slices; queries return complete/partial/
 conflict/unavailable with source event references and quality reasons.
 
@@ -964,22 +992,23 @@ from an absent boundary; legacy JSON alone cannot make that distinction.
 
 Apply the following rules after strict Event validation and equal-fact merging:
 
-| Field group | Required evidence and applicability | Missing projection |
-| --- | --- | --- |
-| Transport identity and request scalars | Endpoint metadata and any own Transport Event repeating local trace ID, Operation, layer, rows, forward mode, output requirement and DP layout | Omit the Record if any required scalar remains unknown |
-| Transport effective result | Own ResultPublished at AtnAgent, or ResultObserved/Closed at Instance, and subsequent own repetitions after the result is known | ProtocolMismatch sentinel with `unknown_result`; a later acknowledgement may repeat Ok, but never supplies the missing ResultObserved time |
-| Transport Instance timestamps | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged, Closed, each at its own Hook | Zero for an unobserved or inapplicable boundary; distinguish them in the evidence report |
-| Transport AtnAgent timestamps | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished, each at its own Hook | Zero for an unobserved or inapplicable boundary |
-| Transport other-site timestamps | AtnAgent boundaries at Instance and Instance boundaries at AtnAgent are inapplicable | Zero, with `not_applicable_fields`; never copy the other site's timestamp |
-| Fabric common scalars | Own local trace ID, Invocation, layer, rows and output requirement; Generation/PE/topology from Generation metadata and its pe_members entry for the recording Producer | Omit the Record if a required scalar is unknown; malformed or conflicting membership fails validation |
-| Fabric AtnAgent facts | Repeated request forward mode, DP layout and DP-local rows | Omit the Record if unknown; these facts are inapplicable to Coordinator/FfnAgent |
-| Fabric AtnAgent/Coordinator Lane and Lease | Own AdmissionObserved/Scheduled or later own repeated Lease | Both nullable values remain null and unknown until evidence exists; null does not prove assignment never happened |
-| Fabric Coordinator scheduler | Metadata policy; repeated ready ticket required only for FIFO | Missing FIFO ticket omits the Record; random has no ready_ticket member and marks it inapplicable |
-| Fabric FfnAgent facts | Own repeated Lane/Lease, row capacity and delivery selection | Omit the Record if unknown; never use another participant's capacity or selection |
-| Fabric other-role facts | Fields outside the selected legacy role alternative | Keep them absent; common nullable fields such as dp_row_layout remain null and are marked inapplicable |
-| Fabric timestamps | Own role's corresponding retained protocol Event | Zero when unobserved or inapplicable; repeated Lease or Graph activity cannot supply a protocol timestamp |
+| Field group                                | Required evidence and applicability                                                                                                                                     | Missing projection                                                                                                                         |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Transport identity and request scalars     | Endpoint metadata and any own Transport Event repeating local trace ID, Operation, layer, rows, forward mode, output requirement and DP layout                          | Omit the Record if any required scalar remains unknown                                                                                     |
+| Transport effective result                 | Own ResultPublished at AtnAgent, or ResultObserved/Closed at Instance, and subsequent own repetitions after the result is known                                         | ProtocolMismatch sentinel with `unknown_result`; a later acknowledgement may repeat Ok, but never supplies the missing ResultObserved time |
+| Transport Instance timestamps              | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged, Closed, each at its own Hook                        | Zero for an unobserved or inapplicable boundary; distinguish them in the evidence report                                                   |
+| Transport AtnAgent timestamps              | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished, each at its own Hook                                                                            | Zero for an unobserved or inapplicable boundary                                                                                            |
+| Transport other-site timestamps            | AtnAgent boundaries at Instance and Instance boundaries at AtnAgent are inapplicable                                                                                    | Zero, with `not_applicable_fields`; never copy the other site's timestamp                                                                  |
+| Fabric common scalars                      | Own local trace ID, Invocation, layer, rows and output requirement; Generation/PE/topology from Generation metadata and its pe_members entry for the recording Producer | Omit the Record if a required scalar is unknown; malformed or conflicting membership fails validation                                      |
+| Fabric AtnAgent facts                      | Repeated request forward mode, DP layout and DP-local rows                                                                                                              | Omit the Record if unknown; these facts are inapplicable to Coordinator/FfnAgent                                                           |
+| Fabric AtnAgent/Coordinator Lane and Lease | Own AdmissionObserved/Scheduled or later own repeated Lease                                                                                                             | Both nullable values remain null and unknown until evidence exists; null does not prove assignment never happened                          |
+| Fabric Coordinator scheduler               | Metadata policy; repeated ready ticket required only for FIFO                                                                                                           | Missing FIFO ticket omits the Record; random has no ready_ticket member and marks it inapplicable                                          |
+| Fabric FfnAgent facts                      | Own repeated Lane/Lease, row capacity and delivery selection                                                                                                            | Omit the Record if unknown; never use another participant's capacity or selection                                                          |
+| Fabric other-role facts                    | Fields outside the selected legacy role alternative                                                                                                                     | Keep them absent; common nullable fields such as dp_row_layout remain null and are marked inapplicable                                     |
+| Fabric timestamps                          | Own role's corresponding retained protocol Event                                                                                                                        | Zero when unobserved or inapplicable; repeated Lease or Graph activity cannot supply a protocol timestamp                                  |
 
-All required facts are repeated on ordinary Transport/Fabric protocol Events.
+All required facts are repeated on ordinary Transport/Fabric protocol Events;
+TransportAnomaly repeats its raw request facts at each original boundary.
 Thus losing only their opening Event does not normally lose the scalar facts.
 Auxiliary Graph evidence with a matching local trace ID may identify an eligible
 local Record and recover only the facts whose presence it actually carries; it
@@ -1005,13 +1034,13 @@ references supporting each applicability decision.
 
 The boundary sets for successful ordinary execution are:
 
-| Local view | Required boundaries for that path |
-| --- | --- |
-| Transport Instance | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged; Closed is inapplicable after acknowledgement |
-| Transport AtnAgent | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished |
-| Fabric AtnAgent | SubmissionPrepared, SubmissionPublished, AdmissionObserved, InputReadyPublished, OutputCommitObserved, OutputAcknowledgementPublished |
+| Local view         | Required boundaries for that path                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transport Instance | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged; Closed is inapplicable after acknowledgement  |
+| Transport AtnAgent | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished                                                                                            |
+| Fabric AtnAgent    | SubmissionPrepared, SubmissionPublished, AdmissionObserved, InputReadyPublished, OutputCommitObserved, OutputAcknowledgementPublished                             |
 | Fabric Coordinator | Enqueued, Scheduled, AdmissionPublished, LaneExecutionPublished, FfnAgentCompletionsObserved, OutputCommitPublished, OutputAcknowledgementsObserved, LaneReleased |
-| Fabric FfnAgent | LaneExecutionObserved, InputReadyObserved, ComputeStarted, ComputeCompleted, CompletionPublished, plus the applicable conditional boundaries below |
+| Fabric FfnAgent    | LaneExecutionObserved, InputReadyObserved, ComputeStarted, ComputeCompleted, CompletionPublished, plus the applicable conditional boundaries below                |
 
 For FfnAgent, Dense layers have no RoutingMetadataPublished/Observed. MoE
 RoutingMetadataPublished belongs to the selected publisher and
@@ -1069,31 +1098,54 @@ explicit I/O error. The legacy snapshot contains no report-specific fields.
 
 The report JSON contains exactly:
 
-| Field | Type and meaning |
-| --- | --- |
-| contract_version, run_id, producer_id | u32, UUID text, u64; same Run/Producer as source evidence |
-| observer | `transport` or `fabric` |
-| generation | Positive u64 metadata reference |
-| endpoint | `{owner:u64, sequence:u64}` for Transport; null for Fabric |
-| site | `instance` or `atnagent` for Transport; null for Fabric |
-| snapshot_sha256 | SHA-256 text for a published JSON pair; null for a Native-only read |
-| capacity | Legacy operation retention capacity, u64 |
-| sequence, dropped | u64 or null; exact operation attempts and capacity exclusions at this read cutoff, or unknown |
-| unobserved_operations | u64 or null; eligible IDs with no evidence, or unknown when the exact eligible range is unavailable |
-| entries | Array of the entries below, sorted by local_trace_id |
+| Field                                 | Type and meaning                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| contract_version, run_id, producer_id | u32, UUID text, u64; same Run/Producer as source evidence                                           |
+| observer                              | `transport` or `fabric`                                                                             |
+| generation                            | Positive u64 metadata reference                                                                     |
+| endpoint                              | `{owner:u64, sequence:u64}` for Transport; null for Fabric                                          |
+| site                                  | `instance` or `atnagent` for Transport; null for Fabric                                             |
+| snapshot_sha256                       | SHA-256 text for a published JSON pair; null for a Native-only read                                 |
+| capacity                              | Legacy operation retention capacity, u64                                                            |
+| sequence, dropped                     | u64 or null; exact operation attempts and capacity exclusions at this read cutoff, or unknown       |
+| unobserved_operations                 | u64 or null; eligible IDs with no evidence, or unknown when the exact eligible range is unavailable |
+| entries                               | Array of the entries below, sorted by local_trace_id                                                |
 
 Each entry contains exactly `local_trace_id:u64`, `role`, `operation`,
 `invocation`, `projection_status`, `evidence_status`, `unknown_fields`,
 `not_applicable_fields`, `missing_boundaries`, `unknown_applicability`, `quality`,
-and `sources`. Role is instance/atnagent/coordinator/ffnagent, or null only for
+`invalid_fields`, `raw_request`, `terminal_boundaries`, and `sources`. Role is
+instance/atnagent/coordinator/ffnagent, or null only for
 an unobserved Fabric ID whose role is not known. Operation is
 `{endpoint_owner:u64, endpoint_sequence:u64, operation_sequence:u64}` or null;
 Invocation is `{generation:u64, instance_index:u64, invocation_sequence:u64}`
 or null. Null identities remain unknown, not fabricated from local trace IDs.
 `projection_status` is `retained`, `omitted`, or `unobserved`: omitted has local
-evidence but lacks required legacy scalar facts; unobserved has no local evidence.
-Omitted entries carry `legacy_fact_missing`; unobserved entries carry
-`operation_unobserved`. Both are absent from legacy records.
+evidence but lacks required legacy scalar facts or contains invalid request
+enums that the typed legacy Record cannot represent. Unobserved has no local
+evidence. Missing required scalars add `legacy_fact_missing`; invalid enums add
+`invalid_request`, not `legacy_fact_missing` merely because their values are
+invalid. Unobserved entries carry `operation_unobserved`. Both omitted and
+unobserved entries are absent from legacy records. An observed anomalous
+operation does not contribute to unobserved_operations.
+
+Every entry includes these anomaly fields:
+
+| Field               | Type and meaning                                                                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| invalid_fields      | Unique lexically sorted names from dp_row_layout, forward_mode, output_requirement; empty for ordinary/Fabric/unobserved entries                                            |
+| raw_request         | Null, or received layer_ordinal:u64, payload_rows:u64, forward_mode:u32, output_requirement:u32, dp_row_layout:u32, all as exact JSON integers                              |
+| terminal_boundaries | Array for an anomalous operation containing only retained ResultPublished, ResultObserved, ResultAcknowledged or Closed, in original boundary-number order; empty otherwise |
+
+Each terminal_boundaries element contains exactly boundary:string,
+raw_time_ns:u64 and result_code:u32. Boundary names use the CamelCase wire
+names above. A recorded zero timestamp or Ok result remains zero. No element
+is created for an absent boundary. raw_request is non-null exactly when
+invalid_fields is nonempty. Known raw invalid values are not unknown fields;
+their scalar source citations retain the original Event references. The
+terminal timestamps and effective result retain their existing field citations.
+An opening-only Event has no known terminal fact; a terminal-only Event never
+supplies an earlier boundary time or proves full-path completeness.
 
 Field and boundary lists contain unique, lexically sorted names. Field paths
 are relative to one legacy Record, using dotted paths for Fabric facts/events.
@@ -1107,7 +1159,8 @@ unknown at the same time. A path may name an omitted required field, such as
 
 `quality` contains unique sorted reasons from `event_missing`, `unknown_result`,
 `legacy_fact_missing`, `operation_unobserved`, `applicability_unknown`,
-`legacy_zero_timestamp`, and `temporal_conflict`. Missing required boundaries
+`legacy_zero_timestamp`, `temporal_conflict`, and `invalid_request`.
+Missing required boundaries
 add event_missing; unknown applicability adds applicability_unknown. Preserve
 other reconstruction diagnostics at their owning interface, rather than
 turning Producer-wide loss into a local reason.
