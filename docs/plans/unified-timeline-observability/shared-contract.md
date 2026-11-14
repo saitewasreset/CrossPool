@@ -1,15 +1,13 @@
-# Shared Observability Contract v5
+# Shared Observability Contract v6
 
-This is the target contract linked from the [task plan](README.md). Version 5
-supersedes versions 1 through 4 as one coordinated specification/fixture revision.
-Readers and participants accept only version 5; no compatibility interpretation is
-provided. This revision defines anomalous Transport Events and their snapshot
-evidence while preserving Generation-scoped Producer-to-PE membership and the
-observed-process boundary. Field availability, per-snapshot evidence reports,
-and path-dependent completeness remain explicit. The 256-byte Event field
-offsets, IPC field layout, and calibration mathematics are unchanged; versioned
-metadata, raw chunks, quality checkpoints, evidence reports and IPC descriptors
-use version 5. Native ABI versions remain independently managed.
+This is the target contract linked from the [task plan](README.md). Version 6
+supersedes versions 1 through 5 as one coordinated specification/fixture revision.
+Readers and participants accept only version 6. Artifacts comprise immutable
+Events, metadata, quality checkpoints and attachments. Native ABI versions
+remain independently managed. Event size remains 256 bytes; bytes 136–143
+are reserved zero and presence bit 8 is forbidden. Other field offsets, IPC
+field layout and calibration mathematics are unchanged.
+
 All integers on disk are little-endian except opaque UUID bytes. Native struct padding,
 `size_t`, pointers, CUDA handles, and enum ordinals inferred from C++ layout are
 never wire representations. Fixture JSON uses exact integer tokens; consumers
@@ -94,7 +92,7 @@ underlying Transport Arena is itself recreated: an AtnAgent process restart
 Fabric Generation rollover. `generation` in the descriptor is the Generation
 reference current at the moment of this allocation. The prior region's CUDA
 allocation and IPC mapping retire only after the Instance has detached
-(`cudaIpcCloseMemHandle`) and any Collector or snapshot-reconstruction work
+(`cudaIpcCloseMemHandle`) and any Collector work
 still reading the prior generation's events has drained, following the
 general rule above that mappings retire after IPC detach and in-flight work.
 The hot descriptor itself carries no "superseded" field; Endpoint lineage
@@ -184,8 +182,9 @@ Context identity's process-wide scope. FfnAgents have no Transport Endpoint in w
 
 ### Calibration sampler storage: per-process Device Producer, not inside observation_region
 
-A sampler's identity is `(Run, Host Producer, Device clock_domain_id)` and
-must exist for every process with a Device Producer, including FfnAgent
+When calibration is enabled, a sampler identified by
+`(Run, Host Producer, Device clock_domain_id)` must exist for every process
+with a Device Producer, including FfnAgent
 processes that never create an `observation_region` at all (FfnAgent has no
 Transport Endpoint). Sampler storage is therefore a separate, non-IPC,
 per-process Device allocation, parallel to `observation_region` rather than
@@ -276,7 +275,7 @@ Each immutable `metadata.<producer>.<revision>.json` contains exactly:
 UUIDs use lowercase canonical text. Process contains `creation_id`, `pid`, and
 `runtime_role`, restricted to `instance`, `atnagent`, or `ffnagent`.
 Producer entries include their complete Process, source kind,
-and clock domain so remote roles can reconstruct their own snapshots. Array
+and clock domain so readers can resolve remote evidence. Array
 entries use positive integer `id` keys where applicable;
 Endpoint and template entries use their composite identities. References are
 immutable across revisions. Import metadata for every referenced remote owner
@@ -321,7 +320,7 @@ for an existing Generation. A new Generation may assign a different PE to the
 same Producer, without changing that Producer's process/source/clock identity;
 lookup is always `(Run, Generation, Producer)`, never Producer alone.
 
-Snapshot Generation/PE/topology come from this metadata. An Event's present PE
+Generation/PE/topology references resolve through this metadata. An Event's present PE
 must agree with the member containing its recording Producer in its Generation.
 Fabric AtnAgent/FfnAgent roles require the corresponding process role;
 Coordinator events require the first FfnAgent member. Graph and other events
@@ -432,8 +431,8 @@ or DP row layout. Ordinary Events retain strict enum validation.
 ### Payload and intrinsic validation
 
 Kind **150**, `TransportAnomaly`, uses presence bit **18**, `RawRequest`.
-Its required presence mask is `0x50107`: Generation, Endpoint, Operation,
-local trace ID, Instance Rank and RawRequest. Only Result bit 15 may be added.
+Its required presence mask is `0x50007`: Generation, Endpoint, Operation,
+Instance Rank and RawRequest. Only Result bit 15 may be added.
 Ordinary request/invocation bits 9/10 and their fields are absent and zero.
 RawRequest is forbidden on every other kind. Unlisted presence bits are zero.
 
@@ -480,7 +479,7 @@ for a single submission to its Source; existing Stopped and identity-exhaustion
 admission rules still apply. The anomaly representation must retain:
 
 - Registered Run, Producer and clock provenance, Generation, Endpoint,
-  Operation, local trace ID, site and Instance Rank, under their existing
+  Operation, site and Instance Rank, under their existing
   ownership and validation rules. Missing identities are never reconstructed
   from counters, timestamps, another site, or mutable IPC storage.
 - The actual original protocol boundary and its raw timestamp, including a
@@ -501,8 +500,9 @@ timestamp of another boundary. A retained opening Event alone does not prove
 that a result was published, execution started, or the operation terminated.
 An actual local result does not prove peer observation or acknowledgement.
 
-Semantic duplicate detection uses the observer domain, local trace ID and
-original boundary, rather than kind 150 alone. Ordinary/anomalous request
+Semantic duplicate detection uses the Transport observation key and
+original boundary defined below, rather than kind 150 alone. Ordinary/anomalous
+request
 representations for the same operation conflict; repeated request and result
 facts must agree. Existing Event identity conflicts and
 conflicting repeated operation facts remain explicit errors; two anomaly
@@ -510,7 +510,7 @@ Events for different boundaries are not duplicates merely because they share
 one dedicated kind. This representation does not make malformed observation
 artifacts valid or authorize bypassing strict enum checks on ordinary Events.
 
-### Bounded collection and evidence reports
+### Bounded collection
 
 Anomaly evidence shares Source sequencing, reserve/commit ownership,
 Collector, Writer, memory and disk admission, and retirement rules. It adds no
@@ -520,32 +520,13 @@ collection; it does not promise zero loss under Full, transfer or export
 failure, or process crash. Such losses and unknown tails remain explicit.
 An invalid field is not itself a Transfer or I/O failure.
 
-The original operation-begin counter remains independent of Event capacity.
+Operation identity allocation remains independent of Event capacity.
 One operation can produce several anomaly Events. Event attempts, abandoned
 reservations, and dropped Events are not counts of rejected requests. A count
 derived only from retained distinct anomalous Operations is an observed lower bound;
 it is not the exact number of anomalous requests. Producer-wide loss cannot
 identify the missing operation or its failure reason, and absence of anomaly
 evidence cannot prove absence of anomalies.
-
-Preserve the legacy Native getter and JSON shapes for representable Records.
-Omit an unrepresentable Record while retaining its anomaly evidence. The
-same-cutoff SnapshotEvidenceReport distinguishes:
-
-- An observed invalid field, an unknown field, and an inapplicable field.
-- An observed anomalous operation omitted from the legacy projection, and an
-  eligible operation with no retained local evidence.
-- A retained local terminal boundary, an unknown terminal boundary, and the
-  completeness of the rest of the observed path.
-
-The report must identify invalid fields, retain references to their raw
-evidence, and expose any actually retained local terminal facts. Such an
-operation is not unobserved and does not contribute to unobserved_operations.
-Do not hide known invalid values solely behind unknown_fields or
-legacy_fact_missing, or infer full-path completeness from a terminal Event.
-The report uses invalid_fields, raw_request, terminal_boundaries and
-invalid_request as specified below. Hash pairing, bounded report storage and
-the original snapshot-read synchronization preconditions continue to apply.
 
 ### Acceptance
 
@@ -557,8 +538,8 @@ errors rather than silently skipped records.
 Acceptance examples must cover each invalid enum and combinations, legal-enum
 geometry rejection, opening-only, terminal-only and complete Event loss,
 actual Shutdown versus ProtocolMismatch, recorded zero timestamps, duplicate
-and conflicting evidence, same-cutoff legacy/report publication, resource
-admission and bounded loss, and unsupported-version rejection. For example,
+and conflicting evidence, resource admission and bounded loss, and unsupported-version
+rejection. For example,
 an operation with forward_mode=99 observed at t1 and a ProtocolMismatch result
 published at t2 must retain the raw value and both boundaries when both Events
 survive. With only t2 retained, the value and actual result remain known while
@@ -568,7 +549,7 @@ t1 is unknown; with only t1 retained, result publication remains unknown.
 
 Every record is 256 bytes. The Producer and Run are supplied by the chunk.
 All unlisted presence bits and all absent fields are zero. Zero is a valid
-timestamp; only legacy projections use zero as their missing-time sentinel.
+timestamp; presence distinguishes observed zero from an absent field.
 
 | Offset                  | Field                                                                                 | Type          |
 | ----------------------- | ------------------------------------------------------------------------------------- | ------------- |
@@ -580,7 +561,7 @@ timestamp; only legacy projections use zero as their missing-time sentinel.
 | 88, 96                  | instance_index, invocation_sequence                                                   | u64 each      |
 | 104, 112                | lane_index, lease_sequence                                                            | u64 each      |
 | 120, 128                | attachment_owner, attachment_sequence                                                 | u64 each      |
-| 136                     | local_trace_id                                                                        | u64           |
+| 136                     | reserved_zero                                                                         | u64           |
 | 144, 152, 160, 168, 176 | layer_ordinal, payload_rows, dp_rank_payload_rows, payload_row_capacity, ready_ticket | u64 each      |
 | 184, 188, 192, 196, 200 | forward_mode, output_requirement, dp_row_layout, delivery, result_code                | u32 each      |
 | 204, 208, 212           | role, instance_rank, pe                                                               | u32, u32, i32 |
@@ -598,7 +579,6 @@ Presence bits group fields:
 | 5     | instance_index, invocation_sequence; requires bit 0                                                              |
 | 6     | lane_index, lease_sequence; requires bit 0                                                                       |
 | 7     | attachment_owner, attachment_sequence                                                                            |
-| 8     | local_trace_id                                                                                                   |
 | 9     | layer_ordinal, payload_rows, forward_mode, output_requirement, dp_row_layout                                     |
 | 10    | layer_ordinal, payload_rows, output_requirement                                                                  |
 | 11–17 | dp_rank_payload_rows, payload_row_capacity, ready_ticket, delivery, result_code, instance_rank, pe, respectively |
@@ -619,10 +599,10 @@ PerRankComplete 1, GroupSumComplete 2; None/UniformByRank/PackedByRank 0/1/2;
 Ok/Shutdown/ProtocolMismatch/Timeout 0/1/2/3. Delivery uses
 DirectPartial/SingleComplete/ReplicatedComplete 1/2/3.
 
-Ordinary Transport records require Generation, Endpoint, Operation, local trace ID,
+Ordinary Transport records require Generation, Endpoint, Operation,
 request facts, and Instance Rank. TransportAnomaly instead uses the RawRequest
 representation defined above. Fabric records require Generation,
-Invocation, local trace ID, invocation facts, and PE. AtnAgent records also
+Invocation, invocation facts, and PE. AtnAgent records also
 carry request facts and DP rows; FfnAgent records carry Lease, row capacity,
 and delivery. Coordinator ticket is present for FIFO scheduling and absent for
 random; scheduler policy is immutable metadata so loss cannot turn FIFO into
@@ -757,8 +737,8 @@ is represented by metadata/quality only. Chunk sequences start at one.
 
 | Offset         | Header field                                             | Type/value                                 |
 | -------------- | -------------------------------------------------------- | ------------------------------------------ |
-| 0              | magic                                                    | Eight bytes `XPOOLC05`                     |
-| 8, 10, 12, 14  | version, header_bytes, event_bytes, flags                | u16: 5, 128, 256, 0                        |
+| 0              | magic                                                    | Eight bytes `XPOOLC06`                     |
+| 8, 10, 12, 14  | version, header_bytes, event_bytes, flags                | u16: 6, 128, 256, 0                        |
 | 16, 24, 32, 40 | producer, chunk_sequence, metadata_revision, event_count | u64 each                                   |
 | 48, 56         | first_event_sequence, last_event_sequence                | u64, minimum/maximum                       |
 | 64, 72         | host_window_begin_ns, host_window_end_ns                 | u64 CLOCK_MONOTONIC collection window      |
@@ -786,7 +766,7 @@ Strict parsing rejects the first failing stage in this order: header length;
 magic/version/layout/flags; header CRC; declared sizes and file length; metadata
 identity/hash and membership semantics; payload CRC; event widths, presence,
 enums, references, order, and membership agreement.
-Unknown event kinds fail v5; unsupported versions fail rather than falling back.
+Unknown event kinds fail v6; unsupported versions fail rather than falling back.
 Errors use codes `header_truncated`, `bad_magic`, `unsupported_version`,
 `invalid_layout`, `header_checksum`, `invalid_length`, `metadata_unavailable`,
 `metadata_checksum`, `payload_checksum`, `invalid_event`, `unknown_kind`,
@@ -805,7 +785,6 @@ counter_exhausted:bool, exact_totals:bool. Revisions start at one. The complete
 example in [quality.json](fixtures/quality.json) freezes the field names.
 Counters are u64: attempted, committed, dropped_full,
 abandoned, stale_token, duplicate_commit, copied, exported, post_commit_lost,
-snapshot_operations_attempted, snapshot_operations_dropped,
 attachment_attempted, attachment_capacity_exhausted, attachment_payload_oversize,
 attachment_not_collected, attachment_publish_failed, sample_attempted,
 sample_failed, sample_skipped_busy, context_unavailable. Counters are cumulative,
@@ -827,8 +806,6 @@ or counter saturation sets exact_totals=false; checkpoint values remain
 lower-bound evidence. Crash recovery sets final totals unknown rather than
 claiming an earlier checkpoint is final. QualitySnapshot exposes the same
 fields as typed Native values; its counters have these exact names and widths.
-Use fixed retained-view known-fact masks to generate per-operation unknown-result
-or missing-fact diagnostics; do not accumulate an unbounded runtime issue list.
 
 Collection state is active/stopped/closed; export is active/failed/closed.
 Stop reason is null, disk_quota, io_error, metadata_unavailable,
@@ -874,12 +851,19 @@ incomplete publication declarations and disagreement with the final entry are
 identity conflicts; an unregistered artifact_id is an invalid event. A nonzero
 reference alone does not replace the final attachment index or establish tensor
 availability. Zero continues to resolve through the attachment identity.
-Do not map by tensor-slot position. Safetensors retains existing generation,
-pe, sequence, dropped, records metadata, and adds contract_version, run_id,
-producer_id, and per-record identity/time/lease fields inside records. IDs and
-weights remain CPU int32/float32, live_rows by effective_topk. Tensor data stays
-outside Event storage. Graph structure artifacts retain their existing inventory
-and add template references through the artifact index.
+Do not map by tensor-slot position. Safetensors metadata contains exactly the
+string values
+`contract_version`, `run_id`, `producer_id`, and `records`. The first three
+identify the artifact version, Run and publishing Producer. `records` encodes
+an array of per-attachment records carrying attachment identity, status,
+Generation reference, Invocation, Lane/Lease, layer, publisher PE, clock domain,
+raw publication time and shape. Tensor keys remain `records.<index>.topk_ids`
+and `records.<index>.topk_weights`; the index locates tensor data, not identity.
+IDs and weights remain CPU int32/float32, live_rows by effective_topk. Tensor
+data stays outside Event storage. Graph structure artifacts describe installed
+structure and reference their templates through the artifact index. Graph
+activity is serialized as versioned Events. The contract defines no compatibility
+with existing Observer getters, JSON/JSONL shapes or snapshot metadata.
 
 `debug.timeline` adds enable=false, outdir=null, device_bytes=8388608,
 host_bytes=33554432, chunk_bytes=1048576, collection_interval_ms=100,
@@ -887,7 +871,7 @@ disk_bytes=1073741824, metadata_reserve_bytes=8388608, shutdown_wait_ms=5000,
 calibration_block_attempts=10, device_event_slot_capacity=16384,
 endpoint_capacity=8, context_slot_capacity=64, and sampler_slot_capacity=1. Enable and outdir must be set together.
 
-Block attempts is fixed to ten in v5. `device_event_slot_capacity`,
+Block attempts is fixed to ten in v6. `device_event_slot_capacity`,
 `endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are positive; startup first evaluates the device
 collection budget composition formula against `device_bytes` using these
 four values, then validates each remaining positive resource value against
@@ -896,318 +880,57 @@ cannot exceed 1 MiB and shutdown_wait_ms cannot exceed 5000. Run-wide policy
 is installed before workers start. Configuration uses the existing environment
 registration/precedence rules and rejects inconsistent participants at preparation.
 
-Unified mode installs all four evidence classes, Context, and calibration;
-existing observer flags request their legacy projections using the same storage,
-never a second Device collector. Unified outdir owns all artifacts and quota;
-an explicitly enabled legacy outdir must equal it, otherwise configuration fails.
-Legacy record_capacity controls its own reconstruction cap. Unified mode with
-legacy flags disabled need not build those legacy views. Independent mode uses
-one process disk ledger across its configured directories, retains its enabled
-class capabilities, and installs shared identity facilities needed by those
-classes. Calibration and complete four-class association are capabilities of
-unified mode. Advertise enabled/disabled/not_applicable/unavailable explicitly.
-The existing snapshot APIs remain callable in unified mode. A disabled legacy
-flag means no separately budgeted legacy projection is installed; its getter
-returns the same unavailable value as an independently disabled observer.
+Unified mode installs all four evidence classes, Context, and calibration.
+Observer enable flags select the collected classes in independent mode; they
+install no additional projection in unified mode and never create a second
+Device collector. Unified mode writes every class to `debug.timeline.outdir`
+under its quota; Observer-specific collection directories apply only in
+independent mode. Independent mode uses one process disk ledger across those directories,
+retains its enabled class capabilities, and installs the shared identity
+facilities those classes require. Existing tensor/structure capacity controls
+remain separate from the event budget. Record reconstruction capacities and
+legacy export directory matching are outside this contract.
 
-## Legacy Snapshot Reconstruction
+Calibration and complete four-class association are capabilities of unified
+mode. Independent mode does not install calibration. A subset of classes can
+produce valid evidence and attachments; absent classes limit available edges
+and boundaries rather than invalidating retained evidence. Cross-domain time
+comparison requires a validated calibration mapping; enabling all classes alone
+does not guarantee complete evidence or successful calibration. Advertise
+capabilities as enabled/disabled/not_applicable/unavailable explicitly.
 
-Source owners are
-[Transport Record](../../../src/cext-include/xpool/devkit/transport_observer.hpp),
-[Fabric Record](../../../src/cext-include/xpool/devkit/fabric_observer.hpp),
-[Transport JSON](../../../src/xpool/devkit/transport_observer.py), and
-[Fabric JSON](../../../src/xpool/devkit/fabric_observer.py).
+## Event Reconstruction
 
-Allocate a legacy trace ID per original record-begin Hook independently of
-event capacity: Instance staging start, AtnAgent RequestObserved, Fabric
-SubmissionPrepared, Enqueued, or LaneExecutionObserved. Snapshot sequence counts
-these operation attempts; it never counts events. The earliest N local IDs are
-eligible for the view (default 8192 per Transport Endpoint or Fabric Producer).
-Omitted opening events do not renumber IDs. Later self-describing events can
-reconstruct an eligible operation; operations with no retained evidence remain
-absent and are classified separately as unobserved. Capacity dropped counts
-IDs above N; event loss may make len(records) smaller than sequence - dropped.
-Lifetime is Endpoint for Transport and installed Producer/Generation for Fabric.
-Endpoint recreation starts a new snapshot domain; offline queries retain both.
+Event identity is `(Run, Producer, event_sequence)`. Identical bytes under the
+same identity are counted once; differing bytes fail with `event_conflict`.
+Semantic duplicate detection for protocol evidence uses these keys:
 
-| Legacy fields                                                                                    | Reconstruction source                                                                             |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Transport trace_id, payload_rows, layer_ordinal, forward_mode, output_requirement, dp_row_layout | Event local_trace_id and repeated request facts                                                   |
-| Transport result_code                                                                            | Site-local result presence; absent projects ProtocolMismatch sentinel plus unknown_result quality |
-| Transport eleven timestamp getters                                                               | Corresponding retained event; absent is zero, recorded bitmap remains authoritative               |
-| Endpoint instance_index/rank                                                                     | Endpoint metadata; Instance Rank repeats on events                                                |
-| Snapshot pid/site/model_id/arena_handle_suffix                                                   | Process/Endpoint metadata; preserve exact model scalar, site, and handle suffix                   |
-| Fabric local_trace_id, key, layer_ordinal, payload_rows, output_requirement                      | Repeated local and Invocation facts                                                               |
-| AtnAgent DP rows, forward_mode, DP layout                                                        | Repeated Submission facts                                                                         |
-| AtnAgent/Coordinator nullable Lane/Lease                                                         | Present only if own AdmissionObserved/Scheduled evidence or later own repeated Lease exists       |
-| Coordinator ready_ticket and scheduler                                                           | Repeated FIFO ticket plus immutable scheduler policy                                              |
-| FfnAgent Lane/Lease, payload_row_capacity, delivery                                              | Repeated LaneExecution/selection facts                                                            |
-| Fabric role event timestamps                                                                     | Corresponding retained kind; absent getters/JSON entries are zero                                 |
-| Fabric generation/pe/counts/model_topologies                                                     | Generation metadata and its pe_members entry for the recording Producer; Event PE must agree      |
+- Transport: `(Run, Producer, role/site, Endpoint, Operation, boundary)`.
+  Ordinary kind 100–110 supplies the boundary; TransportAnomaly uses data0.
+- Fabric: `(Run, Producer, role, Invocation, boundary kind)`. Invocation includes
+  Generation. Coordinator and FfnAgent observations remain distinct even when
+  they share a Producer and Invocation.
 
-If required scalar facts for a legacy Record are absent, retain the raw evidence
-and omit that Record with `legacy_fact_missing` quality. In particular, FIFO
-without an observed ticket cannot be projected as random. Do not fabricate a
-FfnAgent capacity or delivery. Read remains valid only after the original
-quiescence/synchronization boundary and returns bounded Host-owned values.
-Transport reconstruction slots are 256 bytes and Fabric reconstruction slots
-are 384 bytes, including identity, known-fact masks, and timestamps. Reserved
-slab bytes are `sum(transport_capacity * 256 for open Endpoints) +
-fabric_capacity * 384`. Native snapshot result staging adds its actual declared
-Record sizes and bounded vector overhead at peak read time. The slots, metadata,
-queues, and peak read staging must fit Host budget; startup fails otherwise.
+Under one semantic key, different Event identities with equal timestamps and
+facts count once. Different timestamps or boundary facts fail with
+`event_conflict`. Repeated scalar facts across boundaries must agree, otherwise
+`identity_conflict` is reported. Ordinary and anomalous representations of the
+same Transport Operation conflict. Compare only facts actually present; absent
+facts never override known facts. These rules do not merge separate Graph
+executions or attachment identities.
 
-Presence, not the value zero, controls event merging. Merge repeated facts only
-when equal; a conflict is an explicit structured error. Identical event identity
-and bytes is a duplicate, counted once. Two different event IDs for the same
-site/operation/kind with identical time/facts are semantic duplicates; differing
-time/facts conflict. Different roles/sites are different observations.
-When a phase is missing, later phases remain retained; do not apply the old
-Timeline predecessor assertions to incomplete reconstruction.
+Reconstruct causal edges from explicit identities and association Events, not
+file order or timestamp proximity. Retain later boundaries after an opening or
+middle Event is lost. Repeated facts recover scalars, never missing timestamps.
+A local terminal boundary proves only that boundary; missing evidence remains
+unknown. Producer-wide loss counters cannot identify an affected Operation or
+the reason for a particular missing boundary.
 
-Legacy durations retain precisely the existing writer's pairs (enumerated in
-fixtures/snapshots.json), and require both endpoints, the same raw domain, and
-nondecreasing time. Reversed boundaries report temporal_conflict rather than
-silently disappearing. Raw timestamp zero cannot be represented as a recorded
-legacy timestamp; mark legacy_zero_timestamp and omit its legacy duration while
-keeping the raw event. Transport completed means ResultPublished at AtnAgent
-or ResultAcknowledged at Instance; closed means Closed; otherwise incomplete.
-These are legacy classifications, not an assertion of all-phase completeness.
-Phase summary preserves the existing writer's exact indices on sorted values:
-min=0, max=n-1, median=(n-1)//2, p95=round((n-1)*0.95), and
-p99=round((n-1)*0.99), with Python ties-to-even rounding. The baseline docstring
-calls this nearest-rank, but these index rules define compatibility; do not
-substitute ceil(p\*n)-1.
-Loss never creates normal derived slices; queries return complete/partial/
-conflict/unavailable with source event references and quality reasons.
-
-### Field availability and projection
-
-A snapshot is a projection of retained evidence, not an atomic image of all
-production state. One lost Event can remove a timestamp even when later Events
-recover every scalar fact. A terminal Event proves its own boundary, not the
-presence of earlier observations. Repeated facts never reconstruct a timestamp.
-Event presence and the Native recorded bitmap distinguish an observed raw zero
-from an absent boundary; legacy JSON alone cannot make that distinction.
-
-Apply the following rules after strict Event validation and equal-fact merging:
-
-| Field group                                | Required evidence and applicability                                                                                                                                     | Missing projection                                                                                                                         |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Transport identity and request scalars     | Endpoint metadata and any own Transport Event repeating local trace ID, Operation, layer, rows, forward mode, output requirement and DP layout                          | Omit the Record if any required scalar remains unknown                                                                                     |
-| Transport effective result                 | Own ResultPublished at AtnAgent, or ResultObserved/Closed at Instance, and subsequent own repetitions after the result is known                                         | ProtocolMismatch sentinel with `unknown_result`; a later acknowledgement may repeat Ok, but never supplies the missing ResultObserved time |
-| Transport Instance timestamps              | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged, Closed, each at its own Hook                        | Zero for an unobserved or inapplicable boundary; distinguish them in the evidence report                                                   |
-| Transport AtnAgent timestamps              | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished, each at its own Hook                                                                            | Zero for an unobserved or inapplicable boundary                                                                                            |
-| Transport other-site timestamps            | AtnAgent boundaries at Instance and Instance boundaries at AtnAgent are inapplicable                                                                                    | Zero, with `not_applicable_fields`; never copy the other site's timestamp                                                                  |
-| Fabric common scalars                      | Own local trace ID, Invocation, layer, rows and output requirement; Generation/PE/topology from Generation metadata and its pe_members entry for the recording Producer | Omit the Record if a required scalar is unknown; malformed or conflicting membership fails validation                                      |
-| Fabric AtnAgent facts                      | Repeated request forward mode, DP layout and DP-local rows                                                                                                              | Omit the Record if unknown; these facts are inapplicable to Coordinator/FfnAgent                                                           |
-| Fabric AtnAgent/Coordinator Lane and Lease | Own AdmissionObserved/Scheduled or later own repeated Lease                                                                                                             | Both nullable values remain null and unknown until evidence exists; null does not prove assignment never happened                          |
-| Fabric Coordinator scheduler               | Metadata policy; repeated ready ticket required only for FIFO                                                                                                           | Missing FIFO ticket omits the Record; random has no ready_ticket member and marks it inapplicable                                          |
-| Fabric FfnAgent facts                      | Own repeated Lane/Lease, row capacity and delivery selection                                                                                                            | Omit the Record if unknown; never use another participant's capacity or selection                                                          |
-| Fabric other-role facts                    | Fields outside the selected legacy role alternative                                                                                                                     | Keep them absent; common nullable fields such as dp_row_layout remain null and are marked inapplicable                                     |
-| Fabric timestamps                          | Own role's corresponding retained protocol Event                                                                                                                        | Zero when unobserved or inapplicable; repeated Lease or Graph activity cannot supply a protocol timestamp                                  |
-
-All required facts are repeated on ordinary Transport/Fabric protocol Events;
-TransportAnomaly repeats its raw request facts at each original boundary.
-Thus losing only their opening Event does not normally lose the scalar facts.
-Auxiliary Graph evidence with a matching local trace ID may identify an eligible
-local Record and recover only the facts whose presence it actually carries; it
-does not relax protocol Event validation or imply any missing protocol boundary.
-An Event omitting a mandatory field is `invalid_event`, not `legacy_fact_missing`.
-The latter describes insufficient otherwise valid reconstruction evidence.
-
-Missing evidence means unknown. `event_missing` names an observation gap, not
-proof that a Hook was reached or that an Event was dropped by a particular
-buffer. Sequence holes and Producer loss counters alone cannot identify an
-affected Operation, field, or loss reason. Synchronization makes reads safe;
-it does not repair evidence gaps or establish normal production completion.
-
-### Applicable paths and evidence completeness
-
-Determine applicability from the local role/site, retained production facts,
-and referenced metadata or installed Graph structure. An observed boundary is
-applicable. An unobserved conditional boundary is inapplicable only when that
-evidence proves its branch cannot apply; otherwise its applicability is unknown.
-Observation disabled, a missing attachment, or an earlier quality checkpoint
-does not prove a production branch inapplicable. Preserve the metadata/Event
-references supporting each applicability decision.
-
-The boundary sets for successful ordinary execution are:
-
-| Local view         | Required boundaries for that path                                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Transport Instance | RequestStagingStarted, RequestStagingCompleted, RequestPublished, ResultObserved, OutputCopied, ResultAcknowledged; Closed is inapplicable after acknowledgement  |
-| Transport AtnAgent | RequestObserved, ExecutionStarted, ExecutionCompleted, ResultPublished                                                                                            |
-| Fabric AtnAgent    | SubmissionPrepared, SubmissionPublished, AdmissionObserved, InputReadyPublished, OutputCommitObserved, OutputAcknowledgementPublished                             |
-| Fabric Coordinator | Enqueued, Scheduled, AdmissionPublished, LaneExecutionPublished, FfnAgentCompletionsObserved, OutputCommitPublished, OutputAcknowledgementsObserved, LaneReleased |
-| Fabric FfnAgent    | LaneExecutionObserved, InputReadyObserved, ComputeStarted, ComputeCompleted, CompletionPublished, plus the applicable conditional boundaries below                |
-
-For FfnAgent, Dense layers have no RoutingMetadataPublished/Observed. MoE
-RoutingMetadataPublished belongs to the selected publisher and
-RoutingMetadataObserved to the peers that wait for routing. This requires the
-actual layer/participant or installed-Graph evidence; Routing observer enablement
-alone is insufficient. DirectPartial skips PartialReadyPublished and
-PeerPartialsReadyObserved. For complete delivery, PartialReadyPublished requires
-a nonempty destination set, and PeerPartialsReadyObserved requires an active
-reader with peers, following the production selection. If retained topology
-cannot establish those conditions, record unknown applicability.
-
-Closed, rejection, shutdown, timeout, and failed execution may end a path early.
-Closed at Instance excludes ResultAcknowledged. A retained non-Ok Instance result
-excludes successful acknowledgement; OutputCopied can still be observed before
-a shutdown close and must be preserved. AtnAgent rejection may publish a result
-without entering execution. An absent intermediate boundary on these conditional
-paths remains unknown unless local evidence identifies the actual branch; neither
-a non-Ok result nor Closed alone proves the exact stopping point. Conservative
-partial evidence is preferable to declaring an unsupported complete failure path.
-
-`evidence_status` is independent of legacy terminal classification:
-
-- `complete`: all applicable required scalar facts and protocol boundaries are
-  observed, the local terminal boundary is observed, conditional applicability
-  is resolved, and no temporal conflict exists. Inapplicable fields are excluded.
-- `partial`: some local evidence exists, but facts, boundaries, applicability,
-  terminal evidence, or a usable interval remain unresolved. A raw zero timestamp
-  is observed evidence; its legacy representation limitation alone does not
-  change this status.
-- `unavailable`: no local evidence exists for the eligible operation.
-
-Identity/fact/Event conflicts fail reconstruction with the existing structured
-error and source context; they never return a successful legacy projection.
-Conflicting repeated scalar facts use `identity_conflict`; conflicting bytes
-under one Event identity or conflicting duplicate boundaries use `event_conflict`.
-Temporal reversal retains raw evidence, marks `temporal_conflict` and partial
-evidence, and suppresses only the affected durations. In particular, a retained
-ResultAcknowledged can produce legacy `completed` together with evidence
-`partial`. Summaries use only valid phase samples; each phase count may differ
-from both retained and completed Record counts.
-
-### SnapshotEvidenceReport
-
-Each enabled legacy projection has a separate typed `SnapshotEvidenceReport`.
-Keep the existing Native getters and legacy JSON shape. An evidence-aware read
-returns the legacy snapshot and report from the same quiescent/synchronized
-read and Collector cutoff; two independent reads cannot be combined as one pair.
-For JSON publication, publish the immutable report first at
-`<legacy-snapshot-filename>.evidence.json`, then its legacy snapshot. Reports
-are replacements at the same lifecycle boundary as existing snapshots, not an
-unbounded history. Atomicity is per file: a report is usable with a snapshot
-only when `snapshot_sha256` matches its exact published bytes. A crash between
-publications leaves a detectable unavailable pair. Failed publication is an
-explicit I/O error. The legacy snapshot contains no report-specific fields.
-
-The report JSON contains exactly:
-
-| Field                                 | Type and meaning                                                                                    |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| contract_version, run_id, producer_id | u32, UUID text, u64; same Run/Producer as source evidence                                           |
-| observer                              | `transport` or `fabric`                                                                             |
-| generation                            | Positive u64 metadata reference                                                                     |
-| endpoint                              | `{owner:u64, sequence:u64}` for Transport; null for Fabric                                          |
-| site                                  | `instance` or `atnagent` for Transport; null for Fabric                                             |
-| snapshot_sha256                       | SHA-256 text for a published JSON pair; null for a Native-only read                                 |
-| capacity                              | Legacy operation retention capacity, u64                                                            |
-| sequence, dropped                     | u64 or null; exact operation attempts and capacity exclusions at this read cutoff, or unknown       |
-| unobserved_operations                 | u64 or null; eligible IDs with no evidence, or unknown when the exact eligible range is unavailable |
-| entries                               | Array of the entries below, sorted by local_trace_id                                                |
-
-Each entry contains exactly `local_trace_id:u64`, `role`, `operation`,
-`invocation`, `projection_status`, `evidence_status`, `unknown_fields`,
-`not_applicable_fields`, `missing_boundaries`, `unknown_applicability`, `quality`,
-`invalid_fields`, `raw_request`, `terminal_boundaries`, and `sources`. Role is
-instance/atnagent/coordinator/ffnagent, or null only for
-an unobserved Fabric ID whose role is not known. Operation is
-`{endpoint_owner:u64, endpoint_sequence:u64, operation_sequence:u64}` or null;
-Invocation is `{generation:u64, instance_index:u64, invocation_sequence:u64}`
-or null. Null identities remain unknown, not fabricated from local trace IDs.
-`projection_status` is `retained`, `omitted`, or `unobserved`: omitted has local
-evidence but lacks required legacy scalar facts or contains invalid request
-enums that the typed legacy Record cannot represent. Unobserved has no local
-evidence. Missing required scalars add `legacy_fact_missing`; invalid enums add
-`invalid_request`, not `legacy_fact_missing` merely because their values are
-invalid. Unobserved entries carry `operation_unobserved`. Both omitted and
-unobserved entries are absent from legacy records. An observed anomalous
-operation does not contribute to unobserved_operations.
-
-Every entry includes these anomaly fields:
-
-| Field               | Type and meaning                                                                                                                                                            |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| invalid_fields      | Unique lexically sorted names from dp_row_layout, forward_mode, output_requirement; empty for ordinary/Fabric/unobserved entries                                            |
-| raw_request         | Null, or received layer_ordinal:u64, payload_rows:u64, forward_mode:u32, output_requirement:u32, dp_row_layout:u32, all as exact JSON integers                              |
-| terminal_boundaries | Array for an anomalous operation containing only retained ResultPublished, ResultObserved, ResultAcknowledged or Closed, in original boundary-number order; empty otherwise |
-
-Each terminal_boundaries element contains exactly boundary:string,
-raw_time_ns:u64 and result_code:u32. Boundary names use the CamelCase wire
-names above. A recorded zero timestamp or Ok result remains zero. No element
-is created for an absent boundary. raw_request is non-null exactly when
-invalid_fields is nonempty. Known raw invalid values are not unknown fields;
-their scalar source citations retain the original Event references. The
-terminal timestamps and effective result retain their existing field citations.
-An opening-only Event has no known terminal fact; a terminal-only Event never
-supplies an earlier boundary time or proves full-path completeness.
-
-Field and boundary lists contain unique, lexically sorted names. Field paths
-are relative to one legacy Record, using dotted paths for Fabric facts/events.
-`missing_boundaries` lists expected
-but unobserved applicable Event kind names. `unknown_applicability` lists kind
-names whose conditional applicability is unresolved; these are distinct from
-definitely expected missing boundaries. Every listed boundary also appears in
-`unknown_fields` by its legacy timestamp path. Inapplicable paths are never
-unknown at the same time. A path may name an omitted required field, such as
-`facts.scheduler.ready_ticket`; it need not exist in the emitted JSON.
-
-`quality` contains unique sorted reasons from `event_missing`, `unknown_result`,
-`legacy_fact_missing`, `operation_unobserved`, `applicability_unknown`,
-`legacy_zero_timestamp`, `temporal_conflict`, and `invalid_request`.
-Missing required boundaries
-add event_missing; unknown applicability adds applicability_unknown. Preserve
-other reconstruction diagnostics at their owning interface, rather than
-turning Producer-wide loss into a local reason.
-
-`sources` contains `{field, event, metadata}` entries for observed fields and
-applicability decisions. Exactly one of event/metadata is non-null. Event is
-`{producer:u64, event_sequence:u64}`; metadata is
-`{producer:u64, revision:u64, path:string}`, referencing that revision's JSON
-path. Boundary decisions use `boundary.<Kind>` as the field name. Sort sources
-by field; equal repeated facts use the smallest (producer,event_sequence).
-Each field needs at most one source. Proving a field inapplicable from a compound
-condition retains one source per contributing fact under its own field path.
-Use the lexically smallest metadata path in the referencing revision when the
-same fact has multiple equivalent metadata sources. Sources describe stored
-scalar facts and boundary applicability, not derived durations. Transport
-Operation and Fabric Invocation identities are justified by the same source
-as their repeated local identity; snapshot-level metadata is resolved from the
-report domain. The field lists cover the selected legacy role alternative;
-inapplicable nullable common fields, such as Fabric dp_row_layout, are included.
-Facts exclusive to other role alternatives are outside that entry's field set.
-The conditional FIFO ready_ticket remains in the Coordinator field set even
-when random policy omits it from JSON.
-
-Transport report domains are (Run, Producer, Endpoint, site); Fabric domains
-are (Run, Producer, Generation). AtnAgent and Coordinator share the latter local
-ID sequence. Recover an eligible ID's role only from its own evidence. With exact
-sequence S and capacity N, dropped=max(S-N,0), eligible IDs are 1..min(S,N),
-and unobserved_operations counts eligible IDs lacking any local evidence.
-Emit an unobserved entry for each such ID, leaving its unsupported identities
-and Fabric role null, with empty field/boundary/source lists. If S is unknown,
-sequence, dropped and unobserved_operations are null; emit only positively
-identified eligible IDs and never treat an earlier checkpoint as a final count.
-Offline reconstruction may expose the individually projected records with this
-report, but cannot publish a whole legacy snapshot with invented sequence or
-dropped values. Its legacy snapshot envelope is unavailable until those counts
-are exact. A Native synchronized read obtains exact live operation counts;
-an unknown crashed tail is an offline artifact condition.
-IDs above capacity are excluded from the legacy view and report entries, while
-their raw Events remain available to offline queries.
-
-Reports are bounded by the same earliest-N operation window. Store at most one
-canonical provenance reference per finite legacy field or applicability fact;
-duplicate Events do not expand retained provenance. Native report storage, read
-staging and JSON serialization count toward Host budget; published and temporary
-sidecars count toward disk quota. Include their declared worst-case sizes in
-startup admission, alongside existing slabs, metadata and queues. Do not collect
-an unbounded list of repeated Events or silently omit report entries on exhaustion.
-An unavailable/disabled legacy observer has no separate report, matching its
-existing unavailable getter result. Producer quality checkpoints remain aggregate
-collection evidence and never substitute for this per-snapshot report.
+Derived intervals require both retained boundaries, a common raw clock domain
+or supported calibration mappings, and valid ordering. A reversed same-domain
+interval reports `temporal_conflict` while preserving its raw Events. Missing
+or inapplicable stages produce no normal duration. Dense DirectPartial does not
+execute partial-publication or peer-wait Hooks. Disabled Routing observation
+alone does not establish a Dense layer. Queries expose complete/partial/conflict/
+unavailable results with source Event references and quality reasons; this
+contract does not define a per-snapshot report or legacy terminal classification.

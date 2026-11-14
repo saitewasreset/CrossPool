@@ -1,5 +1,5 @@
 {
-  "contract_version": 5,
+  "contract_version": 6,
   "algorithm_version": 1,
   "cases": [
     {
@@ -2644,7 +2644,7 @@
             "lease_sequence": 0,
             "attachment_owner": 0,
             "attachment_sequence": 0,
-            "local_trace_id": 0,
+            "reserved_zero": 0,
             "layer_ordinal": 0,
             "payload_rows": 0,
             "dp_rank_payload_rows": 0,
@@ -2704,7 +2704,7 @@
             "lease_sequence": 0,
             "attachment_owner": 0,
             "attachment_sequence": 0,
-            "local_trace_id": 0,
+            "reserved_zero": 0,
             "layer_ordinal": 0,
             "payload_rows": 0,
             "dp_rank_payload_rows": 0,

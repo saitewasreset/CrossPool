@@ -1,5 +1,5 @@
 {
-  "contract_version": 5,
+  "contract_version": 6,
   "event_bytes": 256,
   "header_bytes": 128,
   "byte_order": "little",
@@ -95,7 +95,7 @@
       "type": "u64"
     },
     {
-      "name": "local_trace_id",
+      "name": "reserved_zero",
       "offset": 136,
       "type": "u64"
     },
@@ -243,12 +243,6 @@
       "fields": [
         "attachment_owner",
         "attachment_sequence"
-      ]
-    },
-    {
-      "bit": 8,
-      "fields": [
-        "local_trace_id"
       ]
     },
     {

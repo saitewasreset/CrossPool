@@ -10,10 +10,10 @@ paired Host/Device clock sampling, and explicit uncertainty and data quality.
 The independently usable contracts are:
 
 - [Shared contract](shared-contract.md): events, identities, Native interfaces,
-  encoding, configuration, lifecycle, attachments, and legacy snapshots.
+  encoding, configuration, lifecycle, attachments, and event reconstruction.
 - [Calibration](calibration.md): deterministic model and numerical contract.
 - [Reference fixtures](fixtures/README.md): fixed inputs, byte vectors, expected
-  reconstruction, legacy projections, and calibration outputs.
+  reconstruction and calibration outputs.
 
 ## Baseline
 
@@ -76,14 +76,11 @@ authoritative only when implemented.
   Add `debug.timeline` through
   `xpool.config`; collection policy is immutable before native initialization
   and Graph Capture.
-- Preserve existing Transport/Fabric snapshot APIs and JSON shapes through
-  bounded Host reconstruction of the earliest N operations. Report missing
-  facts and snapshot-capacity loss in separate quality metadata. Add a bounded
-  per-snapshot evidence report with field-level provenance and explicit unknown
-  and inapplicable fields. Legacy terminal classification remains independent
-  of path-dependent evidence completeness; repeated facts recover scalars,
-  never missing boundary timestamps. Publish the report and legacy JSON as a
-  hash-matched pair at the same read cutoff.
+- Produce versioned raw Events, metadata, quality checkpoints and Graph/Routing
+  attachments. Reconstruct causal relations and valid intervals from retained
+  evidence without preserving existing Observer getters or serialized shapes.
+  Independent Observer flags select collection classes; unified mode enables
+  all four classes and calibration through the shared Collector.
 - Use ten-attempt calibration blocks and a positive-slope affine feasible
   region, with two held-out validation attempts. Preserve raw clocks, model
   assumptions, unavailable intervals, and numerical uncertainty.
@@ -96,10 +93,10 @@ authoritative only when implemented.
 | Resource | Default and accounting |
 | --- | --- |
 | Device collection | 8 MiB per process/Device, split by formula into the event ring, per-Endpoint `observation_region`s, process-wide Graph Context, and per-process calibration sampler storage; see [the device collection budget composition](shared-contract.md#device-collection-budget-composition) |
-| Host collection | 32 MiB per process, including queues, staging, Writer-held blocks, metadata, and snapshot views |
+| Host collection | 32 MiB per process, including queues, staging, Writer-held blocks and metadata |
 | Raw chunk | At most 1 MiB including the 128-byte header |
 | Collection and periodic sampling | 100 ms; at most one in-flight sample per sampler |
-| Runtime disk | 1 GiB per process, including metadata, temporary files, snapshots, and attachments; reserve 8 MiB for metadata |
+| Runtime disk | 1 GiB per process, including metadata, temporary files, and attachments; reserve 8 MiB for metadata |
 | Additional shutdown wait | At most 5 seconds, bounded by the remaining production shutdown deadline |
 
 Device admission uses actual requested bytes for every distinct simultaneously
@@ -129,38 +126,42 @@ shared-contract.md#quality-attachments-and-configuration).
 
 [Anomalous Transport evidence](shared-contract.md#anomalous-transport-evidence)
 must preserve received invalid request fields and actual local terminal
-boundaries through an explicit anomaly representation. Legacy projection
-omission must retain evidence of the anomaly and known terminal facts, with
-unknown and inapplicable facts distinguished. Collection remains bounded,
-and retained terminal evidence does not reconstruct missing earlier times.
+boundaries through an explicit anomaly representation. Invalid values remain
+raw observed facts rather than legal defaults. A terminal Event never supplies
+missing earlier timestamps or proves full-path completeness.
 
-Version 5 defines TransportAnomaly (kind 150), its RawRequest payload and
-the anomaly fields of SnapshotEvidenceReport. Invalid enums omit the typed
-legacy Record with invalid_request while retaining observed evidence; missing
-required scalars independently use legacy_fact_missing. Ordinary Event enum
-validation and the existing Native getter and legacy JSON shapes are preserved.
+TransportAnomaly (kind 150) and RawRequest retain their validation and wire
+payload. Ordinary Event enum validation stays strict. No typed legacy Record
+or snapshot evidence report is produced.
 
 ## Implementation and Validation
 
 Downstream work starts from the same versioned fixtures: strict raw parsing and
 causal reconstruction; deterministic calibration; runtime collection and
-snapshot reconstruction; protocol/Graph identities; Routing attachments; paired
+event reconstruction; protocol/Graph identities; Routing attachments; paired
 sampling; finally native Perfetto/query integration.
 
 Both Native and offline implementations must independently read and write the
 valid binary vector, reject the invalid vectors by structured code, reconstruct
-the same legacy projections, and produce the exact calibration expectations.
+the same identities and causal relations, and produce the exact calibration
+expectations.
 Fixture changes require a coordinated contract version update; never support
-two conflicting interpretations of v5.
+two conflicting interpretations of v6.
 
-Contract and fixture version 5 supersedes versions 1 through 4 without a
-compatibility mode. Update raw vectors, metadata hashes and fixture checksums together.
-The Event record remains 256 bytes and calibration mathematics is unchanged.
-Version 5 standardizes anomalous Transport request evidence and its projection
-report. It retains Generation-scoped Fabric membership, the observed process
-boundary, per-snapshot field availability and the actual Coordinator owner.
-The ordinary Dense DirectPartial fixture excludes partial-publication and
-peer-wait Hooks, matching the actual production branch.
+Contract and fixture version 6 supersedes versions 1 through 5 without a
+compatibility mode. Use XPOOLC06 chunks and version 6 metadata, quality and IPC
+descriptors; update raw vectors and hashes together. Event size stays 256 bytes,
+bytes 136–143 are reserved zero, and presence bit 8 is forbidden. Local trace
+IDs and snapshot operation counters are removed; Transport Operation and Fabric
+Invocation plus local Producer/role/boundary identify protocol observations.
+Calibration retains algorithm_version=1 and its exact numerical expectations.
+
+Graph structure and Routing tensors remain attachments, with no requirement to
+preserve existing Observer export shapes. Routing safetensors uses version,
+Run, Producer and per-attachment records rather than old snapshot counters.
+Independent collection retains its current mode boundary: calibration is
+installed only by unified mode. Partial class selection remains useful but
+cannot supply disabled-class evidence or an uncalibrated cross-domain timeline.
 
 Focused tests must cover independent-observer IPC allocation and policy mismatch,
 Generation-scoped PE reassignment, Host/Device member ownership, malformed and
@@ -170,11 +171,9 @@ actual Graph-owner isolation, entry association retained after failure or absent
 return, rejection before Submission preparation, diagnostic read preconditions,
 and concurrent reservation/commit/reclamation, multiple
 CTAs/Streams, IPC identity lifetime, repeated Replay and Context isolation,
-partial events, opening/middle/terminal loss, repeated-fact recovery, completed
-operations with partial evidence, unknown versus inapplicable fields, omitted
-and entirely unobserved records, field-level provenance, unknown final counts,
-report/snapshot hash mismatch, report resource admission, periodic background
-transfer during serving, Device slot
+partial events, opening/middle/terminal loss, repeated-fact recovery,
+new-identity semantic duplicates and conflicts, reserved bytes and presence bits,
+unknown final counts, periodic background transfer during serving, Device slot
 reclamation before file publication, slow Writer isolation, bounded Host
 exhaustion, I/O failure, quota exhaustion, and background-thread shutdown.
 Follow [test conventions](../../../tests/README.md), repository-managed Ruff,

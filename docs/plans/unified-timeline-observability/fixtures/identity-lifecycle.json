@@ -1,5 +1,5 @@
 {
-  "contract_version": 5,
+  "contract_version": 6,
   "cases": [
     {
       "id": "allocation_000",
@@ -924,7 +924,7 @@
               "raw_time_ns": 155,
               "clock_domain_id": 4,
               "kind": 300,
-              "presence": 140577,
+              "presence": 140321,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -938,7 +938,7 @@
               "lease_sequence": 0,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 1,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -966,7 +966,7 @@
               "raw_time_ns": 200,
               "clock_domain_id": 4,
               "kind": 400,
-              "presence": 152929,
+              "presence": 152673,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -980,7 +980,7 @@
               "lease_sequence": 1,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 2,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1006,11 +1006,7 @@
       "expected": {
         "event_membership_valid": true,
         "pe": 1,
-        "producer": 5,
-        "local_trace_ids": [
-          1,
-          2
-        ]
+        "producer": 5
       }
     },
     {
@@ -1025,7 +1021,7 @@
               "raw_time_ns": 200,
               "clock_domain_id": 4,
               "kind": 400,
-              "presence": 152929,
+              "presence": 152673,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -1039,7 +1035,7 @@
               "lease_sequence": 1,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 2,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1080,7 +1076,7 @@
               "raw_time_ns": 155,
               "clock_domain_id": 3,
               "kind": 300,
-              "presence": 140577,
+              "presence": 140321,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -1094,7 +1090,7 @@
               "lease_sequence": 0,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 1,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1208,7 +1204,7 @@
               "raw_time_ns": 155,
               "clock_domain_id": 5,
               "kind": 300,
-              "presence": 140577,
+              "presence": 140321,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -1222,7 +1218,7 @@
               "lease_sequence": 0,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 1,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1261,7 +1257,7 @@
               "raw_time_ns": 220,
               "clock_domain_id": 4,
               "kind": 507,
-              "presence": 1401,
+              "presence": 1145,
               "generation": 1,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -1275,7 +1271,7 @@
               "lease_sequence": 1,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 2,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1334,7 +1330,7 @@
               "raw_time_ns": 155,
               "clock_domain_id": 4,
               "kind": 300,
-              "presence": 140576,
+              "presence": 140320,
               "generation": 0,
               "endpoint_owner": 0,
               "endpoint_sequence": 0,
@@ -1348,7 +1344,7 @@
               "lease_sequence": 0,
               "attachment_owner": 0,
               "attachment_sequence": 0,
-              "local_trace_id": 1,
+              "reserved_zero": 0,
               "layer_ordinal": 0,
               "payload_rows": 2,
               "dp_rank_payload_rows": 0,
@@ -1402,8 +1398,8 @@
     {
       "id": "contract_version_admitted",
       "input": {
-        "local_contract_version": 5,
-        "peer_contract_version": 5
+        "local_contract_version": 6,
+        "peer_contract_version": 6
       },
       "expected": {
         "startup_accepted": true
@@ -1412,8 +1408,8 @@
     {
       "id": "contract_version_mismatch",
       "input": {
-        "local_contract_version": 5,
-        "peer_contract_version": 4
+        "local_contract_version": 6,
+        "peer_contract_version": 5
       },
       "expected": {
         "startup_accepted": false

@@ -346,7 +346,7 @@ _Avoid_: PID, event buffer slot
 **Observation Operation**:
 One successful Transport Mailbox Claim identified by its shared Endpoint
 creation and Device-issued operation sequence, independently of collection
-capacity or local trace IDs.
+capacity.
 _Avoid_: Local trace ID, InvocationKey
 
 **Graph Execution Observation**:
