@@ -421,6 +421,126 @@ This storage is process-wide per `graph_owner`, not per `observation_region`;
 see "Dynamic Context storage: process-wide, not per-Endpoint" above for its
 default layout and capacity.
 
+## Required Extension: Anomalous Transport Evidence
+
+This section constrains a coordinated contract extension. It does not assign
+new wire values, change version 4, or relax the ordinary Event validation
+rules below. Runtime emission and reader support depend on a jointly frozen
+encoding, report schema, version policy, and reference fixtures. The existing
+v4 vocabulary and fixtures remain authoritative for v4 data.
+
+### Scope and required facts
+
+AtnAgent observes a Published request before validating its RequestMetadata.
+An unknown forward mode, output requirement, or DP row layout can therefore
+reach RequestObserved and a later ResultPublished boundary. Requiring legal
+request enums on every ordinary Transport Event leaves these observed facts
+unrepresentable in v4, including a separately valid terminal result.
+
+The extension must preserve the invalid request fields and each actual local
+terminal boundary. An invalid enum alone must not cause intentional Event
+discard, replacement with a legal default, or classification solely as an
+unobserved operation. Production validation, result selection, and Hook
+boundaries remain unchanged. Requests with legal enums but invalid row counts
+or topology continue to use ordinary Transport evidence where representable.
+
+Use a dedicated anomaly Event representation in the same bounded collection
+and export path. An enabled Hook selects the ordinary or anomaly representation
+for a single submission to its Source; existing Stopped and identity-exhaustion
+admission rules still apply. The anomaly representation must retain:
+
+- Registered Run, Producer and clock provenance, Generation, Endpoint,
+  Operation, local trace ID, site and Instance Rank, under their existing
+  ownership and validation rules. Missing identities are never reconstructed
+  from counters, timestamps, another site, or mutable IPC storage.
+- The actual original protocol boundary and its raw timestamp, including a
+  recorded zero. Observation of an invalid field is distinct from publication
+  or observation of a result.
+- The received request scalars, exact raw integer values of all three request
+  enums, and which fields are invalid. Raw invalid values have dedicated
+  semantics; they are not legal values of the ordinary request-facts group.
+- A result only when it becomes known at that site under the existing
+  observed/published/closed rule. RequestObserved cannot prefill a rejection.
+  An actual Shutdown result during drain must remain Shutdown, even when the
+  request also contains invalid fields.
+
+Each later boundary repeats the request facts already known for that
+operation. A retained terminal Event must remain independently interpretable
+when the opening Event is lost. Repetition recovers scalar facts, never the
+timestamp of another boundary. A retained opening Event alone does not prove
+that a result was published, execution started, or the operation terminated.
+An actual local result does not prove peer observation or acknowledgement.
+
+The selected representation must distinguish different original boundaries
+when detecting semantic duplicates. Existing Event identity conflicts and
+conflicting repeated operation facts remain explicit errors; two anomaly
+Events for different boundaries are not duplicates merely because they share
+one dedicated kind. The extension does not make malformed observation
+artifacts valid or authorize bypassing strict enum checks on ordinary Events.
+
+### Bounded collection and evidence reports
+
+Anomaly evidence shares Source sequencing, reserve/commit ownership,
+Collector, Writer, memory and disk admission, and retirement rules. It adds no
+unbounded emergency queue or synchronous Hook I/O. Required preservation
+means that invalid request values remain expressible and are submitted for
+collection; it does not promise zero loss under Full, transfer or export
+failure, or process crash. Such losses and unknown tails remain explicit.
+An invalid field is not itself a Transfer or I/O failure.
+
+The original operation-begin counter remains independent of Event capacity.
+One operation can produce several anomaly Events. Event attempts, abandoned
+reservations, and dropped Events are not counts of rejected requests. A count
+derived only from retained distinct anomalous Operations is an observed lower bound;
+it is not the exact number of anomalous requests. Producer-wide loss cannot
+identify the missing operation or its failure reason, and absence of anomaly
+evidence cannot prove absence of anomalies.
+
+Preserve the legacy Native getter and JSON shapes for representable Records.
+Omit an unrepresentable Record while retaining its anomaly evidence. The
+extended same-cutoff SnapshotEvidenceReport must distinguish:
+
+- An observed invalid field, an unknown field, and an inapplicable field.
+- An observed anomalous operation omitted from the legacy projection, and an
+  eligible operation with no retained local evidence.
+- A retained local terminal boundary, an unknown terminal boundary, and the
+  completeness of the rest of the observed path.
+
+The report must identify invalid fields, retain references to their raw
+evidence, and expose any actually retained local terminal facts. Such an
+operation is not unobserved and does not contribute to unobserved_operations.
+Do not hide known invalid values solely behind unknown_fields or
+legacy_fact_missing, or infer full-path completeness from a terminal Event.
+All new report fields, reason names, and applicability rules require the same
+coordinated schema revision as the anomaly encoding; this section does not
+add them to the closed v4 report. Hash pairing, bounded report storage and the
+original snapshot-read synchronization preconditions continue to apply.
+
+### Coordinated freeze and acceptance
+
+Before implementations emit the extension, jointly freeze its Event kind and
+payload, presence and intrinsic validation rules, report schema, and explicit
+contract version. Define participant version admission and supported reader
+versions, including rejection of unsupported combinations. New evidence must
+not masquerade as ordinary v4 Events, use currently reserved words without a
+versioned definition, or depend on old readers silently skipping it.
+
+Update versioned reference bytes, semantic expectations and checksums together
+in that encoding revision. Native collection/reconstruction and offline
+parsing/reconstruction must independently agree on the same fixed examples.
+This constraints-only extension leaves the current encoding, Native interface
+declarations, public error enums, and fixture files unchanged.
+
+Acceptance examples must cover each invalid enum and combinations, legal-enum
+geometry rejection, opening-only, terminal-only and complete Event loss,
+actual Shutdown versus ProtocolMismatch, recorded zero timestamps, duplicate
+and conflicting evidence, same-cutoff legacy/report publication, resource
+admission and bounded loss, and unsupported-version rejection. For example,
+an operation with forward_mode=99 observed at t1 and a ProtocolMismatch result
+published at t2 must retain the raw value and both boundaries when both Events
+survive. With only t2 retained, the value and actual result remain known while
+t1 is unknown; with only t1 retained, result publication remains unknown.
+
 ## Fixed Event Layout
 
 Every record is 256 bytes. The Producer and Run are supplied by the chunk.
