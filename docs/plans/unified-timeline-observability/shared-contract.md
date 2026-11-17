@@ -51,7 +51,7 @@ require a separately specified contract extension.
 
 The launcher distributes one Run and the registered Producer/Generation/clock
 IDs through the existing preparation/bootstrap path. IPC exports add optional
-`observation_region` with exactly version:u32=5, owner_producer:u64,
+`observation_region` with exactly version:u32=6, owner_producer:u64,
 endpoint_sequence:u64, generation:u64, allocation_bytes:u64, and handle.
 Handle uses the existing canonical hexadecimal CUDA IPC handle representation;
 it is never persisted in raw timeline metadata. Disabled related observation
