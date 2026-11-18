@@ -1,8 +1,8 @@
-# Shared Observability Contract v6
+# Shared Observability Contract v7
 
-This is the target contract linked from the [task plan](README.md). Version 6
-supersedes versions 1 through 5 as one coordinated specification/fixture revision.
-Readers and participants accept only version 6. Artifacts comprise immutable
+This is the target contract linked from the [task plan](README.md). Version 7
+supersedes versions 1 through 6 as one coordinated specification/fixture revision.
+Readers and participants accept only version 7. Artifacts comprise immutable
 Events, metadata, quality checkpoints and attachments. Native ABI versions
 remain independently managed. Event size remains 256 bytes; bytes 136–143
 are reserved zero and presence bit 8 is forbidden. Other field offsets, IPC
@@ -51,7 +51,7 @@ require a separately specified contract extension.
 
 The launcher distributes one Run and the registered Producer/Generation/clock
 IDs through the existing preparation/bootstrap path. IPC exports add optional
-`observation_region` with exactly version:u32=6, owner_producer:u64,
+`observation_region` with exactly version:u32=7, owner_producer:u64,
 endpoint_sequence:u64, generation:u64, allocation_bytes:u64, and handle.
 Handle uses the existing canonical hexadecimal CUDA IPC handle representation;
 it is never persisted in raw timeline metadata. Disabled related observation
@@ -281,6 +281,9 @@ Endpoint and template entries use their composite identities. References are
 immutable across revisions. Import metadata for every referenced remote owner
 and identity before publishing a referencing chunk. Graph executions and
 operation sequences are dynamic identities, not per-operation dictionary entries.
+Endpoint entries contain owner_producer, endpoint_sequence, generation,
+instance_index, instance_rank, model_id and sites. Arena handles and their
+suffixes are internal pairing checks and are not serialized Endpoint fields.
 Endpoint entries optionally carry `supersedes_endpoint_sequence` naming the
 prior Endpoint this one replaces under the same `owner_producer`, letting
 offline reconstruction stitch Endpoint-recreation lineage without widening the
@@ -493,6 +496,12 @@ admission rules still apply. The anomaly representation must retain:
   An actual Shutdown result during drain must remain Shutdown, even when the
   request also contains invalid fields.
 
+Result codes describe their actual Transport boundary, not one stable result
+for the whole Operation. An Instance may retain ResultObserved(Ok),
+OutputCopied(Ok), and Closed(Shutdown) when shutdown arrives after output copy.
+Keep all three actual results. Never replace a later result with an earlier
+one or infer an unobserved result from another boundary.
+
 Each later boundary repeats the request facts already known for that
 operation. A retained terminal Event must remain independently interpretable
 when the opening Event is lost. Repetition recovers scalar facts, never the
@@ -503,8 +512,9 @@ An actual local result does not prove peer observation or acknowledgement.
 Semantic duplicate detection uses the Transport observation key and
 original boundary defined below, rather than kind 150 alone. Ordinary/anomalous
 request
-representations for the same operation conflict; repeated request and result
-facts must agree. Existing Event identity conflicts and
+representations for the same operation conflict; repeated request facts must
+agree. Results at the same semantic boundary must agree; results at distinct
+Transport boundaries may differ. Existing Event identity conflicts and
 conflicting repeated operation facts remain explicit errors; two anomaly
 Events for different boundaries are not duplicates merely because they share
 one dedicated kind. This representation does not make malformed observation
@@ -737,8 +747,8 @@ is represented by metadata/quality only. Chunk sequences start at one.
 
 | Offset         | Header field                                             | Type/value                                 |
 | -------------- | -------------------------------------------------------- | ------------------------------------------ |
-| 0              | magic                                                    | Eight bytes `XPOOLC06`                     |
-| 8, 10, 12, 14  | version, header_bytes, event_bytes, flags                | u16: 6, 128, 256, 0                        |
+| 0              | magic                                                    | Eight bytes `XPOOLC07`                     |
+| 8, 10, 12, 14  | version, header_bytes, event_bytes, flags                | u16: 7, 128, 256, 0                        |
 | 16, 24, 32, 40 | producer, chunk_sequence, metadata_revision, event_count | u64 each                                   |
 | 48, 56         | first_event_sequence, last_event_sequence                | u64, minimum/maximum                       |
 | 64, 72         | host_window_begin_ns, host_window_end_ns                 | u64 CLOCK_MONOTONIC collection window      |
@@ -766,7 +776,7 @@ Strict parsing rejects the first failing stage in this order: header length;
 magic/version/layout/flags; header CRC; declared sizes and file length; metadata
 identity/hash and membership semantics; payload CRC; event widths, presence,
 enums, references, order, and membership agreement.
-Unknown event kinds fail v6; unsupported versions fail rather than falling back.
+Unknown event kinds fail v7; unsupported versions fail rather than falling back.
 Errors use codes `header_truncated`, `bad_magic`, `unsupported_version`,
 `invalid_layout`, `header_checksum`, `invalid_length`, `metadata_unavailable`,
 `metadata_checksum`, `payload_checksum`, `invalid_event`, `unknown_kind`,
@@ -871,7 +881,7 @@ disk_bytes=1073741824, metadata_reserve_bytes=8388608, shutdown_wait_ms=5000,
 calibration_block_attempts=10, device_event_slot_capacity=16384,
 endpoint_capacity=8, context_slot_capacity=64, and sampler_slot_capacity=1. Enable and outdir must be set together.
 
-Block attempts is fixed to ten in v6. `device_event_slot_capacity`,
+Block attempts is fixed to ten in v7. `device_event_slot_capacity`,
 `endpoint_capacity`, `context_slot_capacity`, and `sampler_slot_capacity` are positive; startup first evaluates the device
 collection budget composition formula against `device_bytes` using these
 four values, then validates each remaining positive resource value against
@@ -912,9 +922,15 @@ Semantic duplicate detection for protocol evidence uses these keys:
   they share a Producer and Invocation.
 
 Under one semantic key, different Event identities with equal timestamps and
-facts count once. Different timestamps or boundary facts fail with
-`event_conflict`. Repeated scalar facts across boundaries must agree, otherwise
-`identity_conflict` is reported. Ordinary and anomalous representations of the
+facts count once. Different timestamps or boundary facts, including a result
+code at that same boundary, fail with `event_conflict`. Repeated stable scalar
+facts across boundaries must agree, otherwise `identity_conflict` is reported.
+Transport result_code is boundary-local and is excluded from stable observation
+facts. Preserve a typed boundary-to-result mapping from the retained Events;
+do not select a unique Operation result by input order, timestamp, or priority.
+An observation has an unknown result only when no retained Event carries the
+Result presence bit. These Transport rules do not relax Fabric fact checks.
+Ordinary and anomalous representations of the
 same Transport Operation conflict. Compare only facts actually present; absent
 facts never override known facts. These rules do not merge separate Graph
 executions or attachment identities.

@@ -1,5 +1,5 @@
 {
-  "contract_version": 6,
+  "contract_version": 7,
   "cases": [
     {
       "id": "allocation_000",
@@ -1398,8 +1398,8 @@
     {
       "id": "contract_version_admitted",
       "input": {
-        "local_contract_version": 6,
-        "peer_contract_version": 6
+        "local_contract_version": 7,
+        "peer_contract_version": 7
       },
       "expected": {
         "startup_accepted": true
@@ -1408,8 +1408,8 @@
     {
       "id": "contract_version_mismatch",
       "input": {
-        "local_contract_version": 6,
-        "peer_contract_version": 5
+        "local_contract_version": 7,
+        "peer_contract_version": 6
       },
       "expected": {
         "startup_accepted": false

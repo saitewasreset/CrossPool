@@ -1,4 +1,4 @@
-# Reference Fixtures v6
+# Reference Fixtures v7
 
 These immutable inputs and expected outputs implement the
 [shared contract](../shared-contract.md) and [calibration algorithm](../calibration.md).
@@ -29,7 +29,7 @@ updates version, bytes, semantic expectations, and checksums together.
 
 ## Case Interpretation
 
-JSON top-level contract_version is 6. Each `cases` entry has a unique `id`,
+JSON top-level contract_version is 7. Each `cases` entry has a unique `id`,
 `input`, and `expected`. Expected dictionaries are assertions on the named
 properties, not a license to discard other quality evidence. The complete
 `normal_dense` case specifies full ordinary behavior.
@@ -74,7 +74,7 @@ is the ordered result, with null for a nonmember or absent Generation evidence.
 An unresolved positive Generation reference is an error, not a null result.
 `events` checks recording-source membership and, when present, the Event's PE.
 Malformed metadata errors precede event validation. The raw vectors reject
-an unsupported header version and complete v5/v4/v3 chunks without compatibility decoding.
+an unsupported header version and complete v6/v5/v4/v3 chunks without compatibility decoding.
 Daemon registration
 expectations describe launcher behavior, not an additional serialized Event role.
 
@@ -82,6 +82,13 @@ expectations describe launcher behavior, not an additional serialized Event role
 Fabric entry, three Fabric role observations, one SGLang Replay, and one native
 FFN activity. The Host return at 350 is distinct from the FFN compute completion
 at raw Device 240; clocks in this example have no implicit cross-domain mapping.
+
+`result_observed_then_shutdown` freezes actual Instance results at boundaries
+107, 108 and 110 as Ok, Ok and Shutdown. `closed_shutdown_only` retains only
+the closing Event, without reconstructing successful prior boundaries. The
+expected `transport_results` keys are original boundary IDs, including for
+anomalous Events. Results are not stable facts across Transport boundaries;
+different results at one semantic boundary remain a conflict.
 Same-domain intervals remain calculable without calibration. Producer 9 is the
 registered AtnAgent Host source; Producer 5 owns both Coordinator and FfnAgent
 evidence, distinguished by role and protocol boundary rather than local trace ID.
@@ -115,7 +122,7 @@ allocation is required by Unified Timeline, Transport Observer, or an explicitly
 identity-dependent consumer, rather than by Graph/Routing enablement alone.
 Diagnostic availability is a precondition result; equal Context generations do
 not validate live mutable storage. The stale graph field in the live-peek case
-is deliberately invalid diagnostic input, not part of the version 6 IPC layout.
+is deliberately invalid diagnostic input, not part of the version 7 IPC layout.
 The causal cases execution_never_returns and execution_returns_failure retain
 the entry edge without inventing FFN completion. invocation_multiple_graph_owners
 preserves separate FfnAgent executions under one Invocation. Attributed SGLang

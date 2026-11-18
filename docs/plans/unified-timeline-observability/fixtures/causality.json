@@ -1,5 +1,5 @@
 {
-  "contract_version": 6,
+  "contract_version": 7,
   "case_identity_notation": {
     "operation": [
       "endpoint_owner",
@@ -5278,6 +5278,206 @@
       },
       "expected": {
         "error": "event_conflict"
+      }
+    },
+    {
+      "id": "result_observed_then_shutdown",
+      "input": {
+        "metadata": "metadata.json",
+        "events": [
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 4,
+              "raw_time_ns": 310,
+              "clock_domain_id": 2,
+              "kind": 107,
+              "presence": 99871,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 1,
+              "graph_template": 1,
+              "graph_execution": 1,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "reserved_zero": 0,
+              "layer_ordinal": 0,
+              "payload_rows": 2,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          },
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 5,
+              "raw_time_ns": 320,
+              "clock_domain_id": 2,
+              "kind": 108,
+              "presence": 99871,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 1,
+              "graph_template": 1,
+              "graph_execution": 1,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "reserved_zero": 0,
+              "layer_ordinal": 0,
+              "payload_rows": 2,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 0,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          },
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 6,
+              "raw_time_ns": 321,
+              "clock_domain_id": 2,
+              "kind": 110,
+              "presence": 99871,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 1,
+              "graph_template": 1,
+              "graph_execution": 1,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "reserved_zero": 0,
+              "layer_ordinal": 0,
+              "payload_rows": 2,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 1,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          }
+        ]
+      },
+      "expected": {
+        "transport_results": {
+          "107": 0,
+          "108": 0,
+          "110": 1
+        },
+        "result_is_stable_fact": false,
+        "unknown_result": false
+      }
+    },
+    {
+      "id": "closed_shutdown_only",
+      "input": {
+        "metadata": "metadata.json",
+        "events": [
+          {
+            "producer": 3,
+            "record": {
+              "event_sequence": 6,
+              "raw_time_ns": 321,
+              "clock_domain_id": 2,
+              "kind": 110,
+              "presence": 99871,
+              "generation": 1,
+              "endpoint_owner": 2,
+              "endpoint_sequence": 1,
+              "operation_sequence": 1,
+              "graph_owner": 1,
+              "graph_template": 1,
+              "graph_execution": 1,
+              "instance_index": 0,
+              "invocation_sequence": 0,
+              "lane_index": 0,
+              "lease_sequence": 0,
+              "attachment_owner": 0,
+              "attachment_sequence": 0,
+              "reserved_zero": 0,
+              "layer_ordinal": 0,
+              "payload_rows": 2,
+              "dp_rank_payload_rows": 0,
+              "payload_row_capacity": 0,
+              "ready_ticket": 0,
+              "forward_mode": 2,
+              "output_requirement": 1,
+              "dp_row_layout": 0,
+              "delivery": 0,
+              "result_code": 1,
+              "role": 1,
+              "instance_rank": 0,
+              "pe": 0,
+              "data0": 0,
+              "data1": 0,
+              "data2": 0,
+              "data3": 0,
+              "data4": 0
+            }
+          }
+        ]
+      },
+      "expected": {
+        "transport_results": {
+          "110": 1
+        },
+        "result_is_stable_fact": false,
+        "unknown_result": false
       }
     }
   ]

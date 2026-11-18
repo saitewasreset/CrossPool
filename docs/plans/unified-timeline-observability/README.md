@@ -146,10 +146,10 @@ valid binary vector, reject the invalid vectors by structured code, reconstruct
 the same identities and causal relations, and produce the exact calibration
 expectations.
 Fixture changes require a coordinated contract version update; never support
-two conflicting interpretations of v6.
+two conflicting interpretations of v7.
 
-Contract and fixture version 6 supersedes versions 1 through 5 without a
-compatibility mode. Use XPOOLC06 chunks and version 6 metadata, quality and IPC
+Contract and fixture version 7 supersedes versions 1 through 6 without a
+compatibility mode. Use XPOOLC07 chunks and version 7 metadata, quality and IPC
 descriptors; update raw vectors and hashes together. Event size stays 256 bytes,
 bytes 136–143 are reserved zero, and presence bit 8 is forbidden. Local trace
 IDs and snapshot operation counters are removed; Transport Operation and Fabric
